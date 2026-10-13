@@ -12,11 +12,9 @@
     color-scheme: dark;
     --panel: #17122b; --panel-2: #231b3d; --row: #2b2249; --line: #3b3160;
     --ink: #ffffff; --ink-2: #d6d0f0; --muted: #a59fc4;
-    --green: #47d64a; --green-dk: #23921f; --red: #e8413c; --red-dk: #9c1f1b; --gray: #d4d4d4; --gray-dk: #8d8d8d;
-    --money: #5dff4f;
+    --green-dk: #23921f; --red-dk: #9c1f1b; --gray-dk: #8d8d8d;
+    --money: #5dff4f; --bar: #47d64a;
     --eggs: #3987e5; --seed: #d95926;
-    --heat-0: #2b2249; --heat-1: #104281; --heat-2: #1c5cab; --heat-3: #2a78d6; --heat-4: #5598e7; --heat-5: #9ec5f4;
-    --band: rgba(71,214,74,0.10);
     --rainbow: linear-gradient(90deg, #ff3b3b, #ff9a1f, #ffe11f, #45e04a, #1fd1ff, #4b6bff, #c64bff, #ff3b3b);
     --stroke: 0 3px 0 #000, 2px 2px 0 #000, -2px 2px 0 #000, 2px -2px 0 #000, -2px -2px 0 #000, 0 -2px 0 #000, 2px 0 0 #000, -2px 0 0 #000;
     --stroke-sm: 0 2px 0 #000, 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000;
@@ -40,6 +38,7 @@
     box-shadow: 0 6px 0 #000;
   }
   .banner h1 { margin: 0; font-size: 34px; font-weight: 700; letter-spacing: .5px; line-height: 1.1; padding-right: 150px; }
+  .banner .sub { margin: 4px 0 0; font-size: 14px; font-weight: 600; text-shadow: var(--stroke-sm); padding-right: 150px; }
   .status { position: absolute; top: 50%; right: 18px; transform: translateY(-50%); text-align: right; }
   .status .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 8px; border: 3px solid #000; border-radius: 10px;
                   font-weight: 700; font-size: 18px; color: #fff; text-shadow: var(--stroke-sm); }
@@ -50,14 +49,13 @@
   @keyframes pulse { 50% { opacity: .35; } }
   @media (prefers-reduced-motion: reduce) { .status .on .led { animation: none; } }
   .status .since { display: block; margin-top: 4px; font-size: 12px; font-weight: 600; text-shadow: var(--stroke-sm); }
-  .banner .sub { margin: 4px 0 0; font-size: 14px; font-weight: 600; text-shadow: var(--stroke-sm); }
 
   /* cadre arc-en-ciel autour du contenu, comme la fenêtre de la boutique */
   .frame { margin-top: 18px; padding: 5px; border-radius: 20px; background: var(--rainbow); box-shadow: 0 6px 0 #000; }
   .frame > .inner { background: var(--panel); border: 3px solid #000; border-radius: 16px; padding: 18px; }
 
   .filters { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 18px; }
-  .seg { display: inline-flex; gap: 6px; }
+  .seg { display: inline-flex; flex-wrap: wrap; gap: 6px; }
   .seg button {
     font: 700 15px "Fredoka", "Segoe UI", sans-serif; color: #fff; text-shadow: var(--stroke-sm); cursor: pointer;
     padding: 6px 14px 8px; border: 3px solid #000; border-radius: 10px;
@@ -66,48 +64,44 @@
   .seg button:hover { filter: brightness(1.08); }
   .seg button:active { transform: translateY(2px); }
   .seg button[aria-pressed="true"] { background: linear-gradient(#69e66b, #36bd38); box-shadow: inset 0 -4px 0 var(--green-dk); }
-  .legend { display: flex; gap: 14px; margin-left: auto; font-weight: 600; text-shadow: var(--stroke-sm); }
+
+  h2 { margin: 6px 0 4px; font-size: 24px; font-weight: 700; color: #fff; text-shadow: var(--stroke); }
+  .hint { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+  .box { background: var(--panel-2); border: 3px solid #000; border-radius: 14px; padding: 12px 16px 14px; box-shadow: inset 0 -4px 0 rgba(0,0,0,.35); }
+
+  /* chiffres clés */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 22px; }
+  .tile .label { font-size: 14px; font-weight: 700; text-shadow: var(--stroke-sm); }
+  .tile .value { font-size: 30px; font-weight: 700; color: var(--money); text-shadow: var(--stroke); margin-top: 2px; line-height: 1.15;
+                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile .note { color: var(--ink-2); font-size: 13px; }
+
+  /* une carte par article */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(245px, 1fr)); gap: 12px; margin-bottom: 22px; }
+  .item { display: flex; flex-direction: column; gap: 6px; }
+  .item .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .item .name { font-size: 18px; font-weight: 700; text-shadow: var(--stroke-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .big { font-size: 34px; font-weight: 700; color: var(--money); text-shadow: var(--stroke); line-height: 1.1; }
+  .item .big small { font-size: 16px; color: #fff; }
+  .item dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; font-size: 14px; }
+  .item dt { color: var(--muted); }
+  .item dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .meter { height: 14px; background: var(--row); border: 2px solid #000; border-radius: 7px; overflow: hidden; }
+  .meter i { display: block; height: 100%; background: var(--bar); border-radius: 0 4px 4px 0; }
+  .item.never { opacity: .7; }
+  .tag { flex: none; font-size: 12px; font-weight: 700; padding: 1px 8px; border: 2px solid currentColor; border-radius: 6px; background: rgba(0,0,0,.35); }
+  .r1 { color: #6dff6a; } .r2 { color: #6fc3ff; } .r3 { color: #d59bff; } .r4 { color: #ffd34d; } .r0 { color: #ff4b45; }
   .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #000; vertical-align: -1px; margin-right: 6px; }
 
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
-  .tile, .card { background: var(--panel-2); border: 3px solid #000; border-radius: 14px; }
-  .tile { padding: 12px 16px 14px; box-shadow: inset 0 -4px 0 rgba(0,0,0,.35); }
-  .tile .label { font-size: 14px; font-weight: 700; text-shadow: var(--stroke-sm); }
-  .tile .value { font-size: 32px; font-weight: 700; color: var(--money); text-shadow: var(--stroke); margin-top: 2px; line-height: 1.15; }
-  .tile .note { color: var(--ink-2); font-size: 13px; }
-  .card { padding: 16px; margin-bottom: 16px; overflow-x: auto; }
-  h2 { margin: 0 0 4px; font-size: 22px; font-weight: 700; color: #fff; text-shadow: var(--stroke); }
-  .hint { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
-
-  table { width: 100%; border-collapse: separate; border-spacing: 0 6px; font-variant-numeric: tabular-nums; }
-  th { text-align: left; color: var(--muted); font-weight: 600; font-size: 13px; padding: 0 12px; }
-  td { padding: 9px 12px; background: var(--row); border-top: 2px solid #000; border-bottom: 2px solid #000; font-weight: 600; }
-  td:first-child { border-left: 2px solid #000; border-radius: 10px 0 0 10px; font-size: 16px; text-shadow: var(--stroke-sm); }
-  td:last-child { border-right: 2px solid #000; border-radius: 0 10px 10px 0; }
-  td.num, th.num { text-align: right; }
-  .count { color: var(--money); font-size: 18px; text-shadow: var(--stroke-sm); }
-  .zero td { opacity: .75; }
-  .nostock { display: inline-block; background: #3a0d0d; color: #ff4b45; border: 2px solid #ff4b45; border-radius: 6px;
-             padding: 0 8px; font-weight: 700; font-size: 13px; letter-spacing: .3px; }
-
-  /* carte de chaleur */
-  .heat { display: grid; grid-template-columns: 170px repeat(24, minmax(18px, 1fr)); gap: 3px; min-width: 660px; }
-  .heat .rl, .tl-row .rl { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 6px; align-self: center; text-shadow: var(--stroke-sm); }
-  .heat .hl { font-size: 12px; color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; }
-  .cell { height: 26px; border-radius: 5px; background: var(--heat-0); border: 2px solid #000; }
-  .cell.off { background: repeating-linear-gradient(45deg, var(--panel) 0 3px, var(--line) 3px 6px); }
-  .scale { display: flex; align-items: center; gap: 4px; margin-top: 10px; color: var(--muted); font-size: 13px; }
-  .scale span.sw { width: 20px; height: 14px; border-radius: 4px; border: 2px solid #000; }
-
-  /* chronologie */
-  .tl { min-width: 660px; }
-  .tl-row { display: grid; grid-template-columns: 170px 1fr; align-items: center; height: 30px; }
-  .track { position: relative; height: 100%; border-bottom: 2px dashed var(--line); }
-  .band { position: absolute; top: 3px; bottom: 3px; background: var(--band); border-radius: 4px; }
-  .mark { position: absolute; top: 50%; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; border-radius: 50%; border: 2px solid #000; }
-  .mark::after { content: ""; position: absolute; inset: -6px; } /* zone de survol plus grande que le point */
-  .axis { position: relative; height: 24px; margin-left: 170px; }
-  .axis span { position: absolute; top: 5px; transform: translateX(-50%); font-size: 12px; color: var(--muted); white-space: nowrap; }
+  /* graphiques en barres */
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; margin-bottom: 22px; }
+  .bars { display: flex; align-items: flex-end; gap: 3px; height: 150px; border-bottom: 2px solid var(--line); }
+  .bars .b { flex: 1; height: 100%; display: flex; align-items: flex-end; position: relative; }
+  .bars .b i { display: block; width: 100%; min-height: 2px; background: var(--bar); border: 2px solid #000; border-bottom: 0; border-radius: 4px 4px 0 0; }
+  .bars .b.off i { background: repeating-linear-gradient(45deg, var(--panel) 0 3px, var(--line) 3px 6px); border-color: var(--line); height: 100% !important; opacity: .45; }
+  .bars .b:hover i { filter: brightness(1.2); }
+  .axis { display: flex; gap: 3px; margin-top: 4px; }
+  .axis span { flex: 1; text-align: center; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: visible; }
 
   .recent { list-style: none; margin: 0; padding: 0; columns: 2 300px; column-gap: 12px; }
   .recent li { padding: 6px 10px; margin-bottom: 6px; break-inside: avoid; background: var(--row); border: 2px solid #000; border-radius: 10px; font-weight: 600; }
@@ -116,7 +110,7 @@
   #tip { position: fixed; pointer-events: none; background: var(--panel); color: #fff; border: 3px solid #000; box-shadow: 0 4px 0 #000;
          border-radius: 10px; padding: 6px 10px; font-size: 13px; font-weight: 600; display: none; z-index: 10; white-space: nowrap; }
   @media (max-width: 600px) {
-    .banner h1 { font-size: 26px; padding-right: 0; } .legend { margin-left: 0; }
+    .banner h1 { font-size: 26px; padding-right: 0; } .banner .sub { padding-right: 0; }
     .status { position: static; transform: none; text-align: left; margin-top: 10px; }
   }
 </style>
@@ -138,13 +132,10 @@
       </div>
       <div class="seg" id="periodSeg" role="group" aria-label="Période">
         <button data-v="1" aria-pressed="false">24 h</button>
-        <button data-v="7" aria-pressed="true">7 jours</button>
-        <button data-v="30" aria-pressed="false">30 jours</button>
-        <button data-v="0" aria-pressed="false">Tout</button>
+        <button data-v="7" aria-pressed="false">7 jours</button>
+        <button data-v="0" aria-pressed="true">Depuis le début</button>
       </div>
-      <div class="legend"><span><i class="dot" style="background:var(--eggs)"></i>Œufs</span><span><i class="dot" style="background:var(--seed)"></i>Graines</span></div>
     </div>
-
     <div id="content"></div>
   </div></div>
 </main>
@@ -153,19 +144,21 @@
 <script src="historique.js"></script>
 <script>
 const HOUR = 3600e3, DAY = 24 * HOUR;
+// durée d'un restock de chaque boutique (le minuteur « New eggs in 5:59 » du jeu) : sert au calcul de la chance par restock
+const RESTOCK_MIN = { eggs: 6, seed: 5 };
 // le bot envoie un signal toutes les 10 min quand il tourne ; sans nouvelles depuis 25 min (PC éteint, plantage), il est « inactif »
 const ACTIVE_MAX = 25 * 60e3;
 // statut en direct via ntfy.sh (GitHub Pages met 1-2 min à publier) ; même canal que STATUS_URL dans shop_bot.py
 const STATUS_URL = "https://ntfy.sh/shopbot-sizein1-42dad0def695";
-const state = { shop: "all", days: 7 };
-let NOW, GEN, ACTIVE, ITEMS, EVENTS, SESSIONS, SEEN;
+const EMOJI = { eggs: "🥚", seed: "🌱" };
+const state = { shop: "all", days: 0 };
+let NOW, GEN, SEEN, ACTIVE, ITEMS, EVENTS, SESSIONS;
 let LIVE = null;  // dernier statut reçu en direct : { actif, time }
 
 function load() {
   NOW = new Date();
   GEN = window.GENERATED ? new Date(window.GENERATED) : NOW;  // dernier envoi de données par le bot
-  // le statut en direct l'emporte s'il est plus récent que les données GitHub
-  const live = LIVE && LIVE.time > GEN ? LIVE : null;
+  const live = LIVE && LIVE.time > GEN ? LIVE : null;           // le statut en direct l'emporte s'il est plus récent
   SEEN = live ? live.time : GEN;
   ACTIVE = (live ? live.actif : !!(window.BOT && window.BOT.actif)) && NOW - SEEN < ACTIVE_MAX;
   ITEMS = window.ITEMS || [];
@@ -191,116 +184,112 @@ const fmtDur = ms => {
 };
 const fmtDate = d => d.toLocaleString("fr-FR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const fmtAgo = d => NOW - d < 60e3 ? "à l'instant" : "il y a " + fmtDur(NOW - d);
+const fmtPct = p => p >= 10 ? Math.round(p) + " %" : p >= 1 ? p.toFixed(1).replace(".", ",") + " %" : p > 0 ? "< 1 %" : "0 %";
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const color = shop => `var(--${shop === "eggs" ? "eggs" : "seed"})`;
+const overlap = (a0, a1, b0, b1) => Math.max(0, Math.min(a1, b1) - Math.max(a0, b0));
+// rareté d'après la chance d'apparaître à chaque restock
+const rarity = p => p === 0 ? ["r0", "Jamais vu"] : p >= 30 ? ["r1", "Commun"] : p >= 10 ? ["r2", "Peu commun"] : p >= 3 ? ["r3", "Rare"] : ["r4", "Très rare"];
 
-function overlap(a0, a1, b0, b1) { return Math.max(0, Math.min(a1, b1) - Math.max(a0, b0)); }
+function bars(values, labels, tips, offs) {
+  const max = Math.max(1, ...values);
+  return `<div class="bars">${values.map((v, i) => `<div class="b${offs && offs[i] ? " off" : ""}" data-tip="${esc(tips[i])}">
+      <i style="height:${(v / max * 100).toFixed(1)}%"></i></div>`).join("")}</div>
+    <div class="axis">${labels.map(l => `<span>${l}</span>`).join("")}</div>`;
+}
 
 function render() {
-  const first = EVENTS.length ? EVENTS[0].t : NOW;
-  const from = state.days ? new Date(NOW - state.days * DAY) : first;
-  const items = ITEMS.filter(i => state.shop === "all" || i.shop === state.shop);
-  const stock = EVENTS.filter(x => x.e === "stock" && x.t >= from && (state.shop === "all" || x.shop === state.shop));
-  const observed = SESSIONS.reduce((s, [a, b]) => s + overlap(a, b, from, NOW), 0);
-
   document.getElementById("status").innerHTML = ACTIVE
     ? `<span class="pill on"><i class="led"></i>ACTIF</span>`
     : `<span class="pill off"><i class="led"></i>INACTIF</span>${window.GENERATED || LIVE ? `<span class="since">vu ${fmtAgo(SEEN)}</span>` : ""}`;
+
+  const first = EVENTS.length ? EVENTS[0].t : NOW;
   document.getElementById("sub").textContent = EVENTS.length
-    ? `Données du bot depuis le ${fmtDate(first)} · mises à jour ${fmtAgo(GEN)}`
-    : "Pas encore de données";
+    ? `Depuis le ${fmtDate(first)} · mis à jour ${fmtAgo(GEN)}` : "Pas encore de données";
   const box = document.getElementById("content");
   if (!EVENTS.length) {
-    box.innerHTML = `<div class="card empty">Aucune donnée pour l'instant.<br>Lance le bot : chaque apparition d'un œuf ou d'un pack sera enregistrée ici.</div>`;
+    box.innerHTML = `<div class="box empty">Aucune donnée pour l'instant.<br>Lance le bot : chaque œuf ou pack qui apparaît sera compté ici.</div>`;
     return;
   }
 
-  // --- par article ---
-  const rows = items.map(it => {
-    const hits = stock.filter(x => x.name === it.name);
-    return { ...it, n: hits.length, last: hits.length ? hits[hits.length - 1].t : null };
-  }).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
-  const lastHit = stock[stock.length - 1];
-  const obsH = observed / HOUR;
+  const from = state.days ? new Date(NOW - state.days * DAY) : first;
+  const inShop = s => state.shop === "all" || s === state.shop;
+  const stock = EVENTS.filter(x => x.e === "stock" && x.t >= from && inShop(x.shop));
+  const watched = SESSIONS.reduce((s, [a, b]) => s + overlap(a, b, from, NOW), 0);  // temps où le bot regardait
 
-  const tiles = `
-    <div class="tiles">
-      <div class="tile"><div class="label">Apparitions</div><div class="value">${stock.length}</div>
-        <div class="note">${rows.filter(r => r.n).length} article(s) différent(s)</div></div>
-      <div class="tile"><div class="label">Temps observé</div><div class="value">${fmtDur(observed)}</div>
-        <div class="note">bot en marche sur la période</div></div>
-      <div class="tile"><div class="label">Fréquence globale</div><div class="value">${stock.length && obsH ? fmtDur(observed / stock.length) : "—"}</div>
-        <div class="note">une apparition toutes les… (temps observé)</div></div>
-      <div class="tile"><div class="label">Dernière apparition</div><div class="value" style="font-size:22px">${lastHit ? esc(lastHit.name) : "—"}</div>
-        <div class="note">${lastHit ? fmtAgo(lastHit.t) : "aucune sur la période"}</div></div>
+  // --- une carte par article ---
+  const items = ITEMS.filter(i => inShop(i.shop)).map(it => {
+    const hits = stock.filter(x => x.name === it.name);
+    const restocks = watched / (RESTOCK_MIN[it.shop] * 60e3);
+    const byHour = Array(24).fill(0); hits.forEach(x => byHour[x.t.getHours()]++);
+    const bestH = byHour.indexOf(Math.max(...byHour));
+    return { ...it, n: hits.length, last: hits.length ? hits[hits.length - 1].t : null,
+             chance: restocks ? Math.min(100, hits.length / restocks * 100) : 0, bestH };
+  }).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
+  const maxChance = Math.max(1, ...items.map(i => i.chance));
+  const cards = items.map(r => {
+    const [cls, label] = rarity(r.chance);
+    return `<div class="box item${r.n ? "" : " never"}">
+      <div class="top"><span class="name">${EMOJI[r.shop]} ${esc(r.name)}</span><span class="tag ${cls}">${label}</span></div>
+      <div class="big">${r.n} <small>fois</small></div>
+      <div class="meter" title="Chance à chaque restock"><i style="width:${(r.chance / maxChance * 100).toFixed(1)}%"></i></div>
+      <dl>
+        <dt>Chance par restock</dt><dd>${fmtPct(r.chance)}</dd>
+        <dt>En moyenne</dt><dd>${r.n ? "toutes les " + fmtDur(watched / r.n) : "—"}</dd>
+        <dt>Dernière fois</dt><dd>${r.last ? fmtAgo(r.last) : "—"}</dd>
+        <dt>Heure la plus fréquente</dt><dd>${r.n ? `${r.bestH}h – ${r.bestH + 1}h` : "—"}</dd>
+      </dl></div>`;
+  }).join("");
+
+  // --- chiffres clés ---
+  const top = items[0], lastHit = stock[stock.length - 1];
+  const tiles = `<div class="tiles">
+      <div class="box tile"><div class="label">Apparitions</div><div class="value">${stock.length}</div>
+        <div class="note">${stock.length ? "1 toutes les " + fmtDur(watched / stock.length) + " en moyenne" : "aucune sur la période"}</div></div>
+      <div class="box tile"><div class="label">Temps surveillé</div><div class="value">${fmtDur(watched)}</div>
+        <div class="note">le bot ne voit rien quand il est arrêté</div></div>
+      <div class="box tile"><div class="label">Le plus fréquent</div><div class="value">${top && top.n ? esc(top.name) : "—"}</div>
+        <div class="note">${top && top.n ? top.n + " fois" : "—"}</div></div>
+      <div class="box tile"><div class="label">Dernier apparu</div><div class="value">${lastHit ? esc(lastHit.name) : "—"}</div>
+        <div class="note">${lastHit ? fmtAgo(lastHit.t) : "aucun sur la période"}</div></div>
     </div>`;
 
-  const table = `
-    <div class="card"><h2>Par article</h2>
-      <p class="hint">« Fréquence » = temps observé ÷ nombre d'apparitions : les heures où le bot était arrêté ne comptent pas.</p>
-      <table><thead><tr><th>Article</th><th class="num">Apparitions</th><th class="num">Par 24 h observées</th>
-        <th class="num">Fréquence</th><th class="num">Dernière fois</th></tr></thead><tbody>
-      ${rows.map(r => `<tr${r.n ? "" : ' class="zero"'}><td><i class="dot" style="background:${color(r.shop)}"></i>${esc(r.name)}</td>
-        <td class="num"><span class="count">${r.n}</span></td><td class="num">${obsH ? (r.n / obsH * 24).toFixed(1) : "—"}</td>
-        <td class="num">${r.n ? "toutes les " + fmtDur(observed / r.n) : '<span class="nostock">NO STOCK</span>'}</td>
-        <td class="num">${r.last ? fmtAgo(r.last) : "—"}</td></tr>`).join("")}
-      </tbody></table></div>`;
-
-  // --- carte de chaleur : heure de la journée ---
-  const covered = Array(24).fill(0); // minutes observées par heure de la journée
+  // --- par heure de la journée ---
+  const watchedH = Array(24).fill(0);
   for (const [a, b] of SESSIONS) {
     for (let t = new Date(Math.max(a, from)); t < b; ) {
       const next = new Date(t); next.setMinutes(60, 0, 0);
-      covered[t.getHours()] += (Math.min(next, b) - t) / 60e3;
+      watchedH[t.getHours()] += Math.min(next, b) - t;
       t = next;
     }
   }
-  const counts = rows.map(r => { const c = Array(24).fill(0); stock.filter(x => x.name === r.name).forEach(x => c[x.t.getHours()]++); return c; });
-  const max = Math.max(1, ...counts.flat());
-  const level = v => v ? Math.min(5, Math.ceil(v / max * 5)) : 0;
-  const heat = `
-    <div class="card"><h2>Heure de la journée</h2>
-      <p class="hint">Nombre d'apparitions par heure. Les cases hachurées sont des heures où le bot n'a jamais tourné sur la période.</p>
-      <div class="heat">
-        <div></div>${Array.from({ length: 24 }, (_, h) => `<div class="hl">${h % 3 ? "" : h + "h"}</div>`).join("")}
-        ${rows.map((r, i) => `<div class="rl" title="${esc(r.name)}"><i class="dot" style="background:${color(r.shop)}"></i>${esc(r.name)}</div>` +
-          counts[i].map((v, h) => {
-            const off = !covered[h];
-            return `<div class="cell${off ? " off" : ""}" style="${off ? "" : `background:var(--heat-${level(v)})`}"
-              data-tip="${esc(r.name)} · ${h}h–${h + 1}h : ${off ? "non observé" : `${v} apparition${v > 1 ? "s" : ""} (${fmtDur(covered[h] * 60e3)} observées)`}"></div>`;
-          }).join("")).join("")}
-      </div>
-      <div class="scale">moins ${[1, 2, 3, 4, 5].map(l => `<span class="sw" style="background:var(--heat-${l})"></span>`).join("")} plus</div>
+  const perHour = Array(24).fill(0); stock.forEach(x => perHour[x.t.getHours()]++);
+  const hourChart = bars(perHour, perHour.map((_, h) => h % 3 ? "" : h + "h"),
+    perHour.map((v, h) => watchedH[h] ? `${h}h – ${h + 1}h : ${v} apparition${v > 1 ? "s" : ""} (surveillé ${fmtDur(watchedH[h])})` : `${h}h – ${h + 1}h : pas surveillé`),
+    watchedH.map(w => !w));
+
+  // --- par jour (14 derniers jours max) ---
+  const day0 = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+  const nDays = Math.min(14, Math.max(1, Math.round((day0(NOW) - day0(from)) / DAY) + 1));
+  const days = Array.from({ length: nDays }, (_, i) => new Date(day0(NOW) - (nDays - 1 - i) * DAY));
+  const perDay = days.map(d => stock.filter(x => day0(x.t).getTime() === d.getTime()).length);
+  const dayLbl = d => d.toLocaleDateString("fr-FR", { day: "numeric", month: "numeric" });
+  const dayChart = bars(perDay, days.map((d, i) => nDays > 7 && i % 2 ? "" : dayLbl(d)),
+    perDay.map((v, i) => `${days[i].toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} : ${v} apparition${v > 1 ? "s" : ""}`));
+
+  const charts = `<div class="charts">
+      <div class="box"><h2>À quelle heure ?</h2><p class="hint">Apparitions selon l'heure. Hachuré = le bot ne tournait pas à cette heure-là.</p>${hourChart}</div>
+      <div class="box"><h2>Quel jour ?</h2><p class="hint">Apparitions par jour.</p>${dayChart}</div>
     </div>`;
 
-  // --- frise chronologique ---
-  const span = NOW - from || 1, pos = t => ((t - from) / span * 100).toFixed(3) + "%";
-  const bands = SESSIONS.filter(([a, b]) => b > from).map(([a, b]) => {
-    const a2 = Math.max(a, from);
-    return `<div class="band" style="left:${pos(a2)};width:${((b - a2) / span * 100).toFixed(3)}%"></div>`;
-  }).join("");
-  const ticks = Array.from({ length: 6 }, (_, i) => new Date(+from + span * i / 5));
-  const tickFmt = d => state.days === 1 ? d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
-                                        : d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
-  const timeline = `
-    <div class="card"><h2>Chronologie</h2>
-      <p class="hint">Chaque point est une apparition ; la bande verte montre quand le bot tournait.</p>
-      <div class="tl">
-        ${rows.map(r => `<div class="tl-row"><div class="rl" title="${esc(r.name)}">${esc(r.name)}</div><div class="track">${bands}
-          ${stock.filter(x => x.name === r.name).map(x => `<div class="mark" style="left:${pos(x.t)};background:${color(r.shop)}"
-            data-tip="${esc(r.name)} · ${fmtDate(x.t)}"></div>`).join("")}</div></div>`).join("")}
-        <div class="axis">${ticks.map((d, i) => `<span style="left:${i * 20}%;${i === 0 ? "transform:none" : i === 5 ? "transform:translateX(-100%)" : ""}">${tickFmt(d)}</span>`).join("")}</div>
-      </div>
-    </div>`;
+  const recent = `<h2>Dernières apparitions</h2>
+    <div class="box">${stock.length ? `<ul class="recent">${stock.slice(-20).reverse().map(x =>
+      `<li><time>${fmtDate(x.t)}</time>${EMOJI[x.shop]} ${esc(x.name)}</li>`).join("")}</ul>`
+      : `<p class="hint">Aucune apparition sur la période.</p>`}</div>`;
 
-  const recent = `
-    <div class="card"><h2>Dernières apparitions</h2>
-      ${stock.length ? `<ul class="recent">${stock.slice(-30).reverse().map(x =>
-        `<li><time>${fmtDate(x.t)}</time><i class="dot" style="background:${color(x.shop)}"></i>${esc(x.name)}</li>`).join("")}</ul>`
-        : `<p class="hint">Aucune apparition sur la période.</p>`}
-    </div>`;
-
-  box.innerHTML = tiles + table + heat + timeline + recent;
+  box.innerHTML = tiles +
+    `<h2>Chaque article</h2><p class="hint">« Chance par restock » : sur 100 restocks, combien de fois l'article était dans la boutique.</p>
+     <div class="cards">${cards}</div>` + charts + recent;
 }
 
 for (const [id, key, parse] of [["shopSeg", "shop", v => v], ["periodSeg", "days", Number]]) {
@@ -319,8 +308,7 @@ document.addEventListener("mousemove", e => {
   if (!t) { tip.style.display = "none"; return; }
   tip.textContent = t.dataset.tip;
   tip.style.display = "block";
-  const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8);
-  tip.style.left = x + "px";
+  tip.style.left = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8) + "px";
   tip.style.top = (e.clientY + 16) + "px";
 });
 

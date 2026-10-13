@@ -153,8 +153,8 @@
 <script src="historique.js"></script>
 <script>
 const HOUR = 3600e3, DAY = 24 * HOUR;
-// le bot envoie un signal toutes les 5 min quand il tourne ; sans nouvelles depuis 12 min (PC éteint, plantage), il est « inactif »
-const ACTIVE_MAX = 12 * 60e3;
+// le bot envoie un signal toutes les 10 min quand il tourne ; sans nouvelles depuis 25 min (PC éteint, plantage), il est « inactif »
+const ACTIVE_MAX = 25 * 60e3;
 const state = { shop: "all", days: 7 };
 let NOW, GEN, ACTIVE, ITEMS, EVENTS, SESSIONS;
 

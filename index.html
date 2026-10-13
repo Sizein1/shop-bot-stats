@@ -144,8 +144,8 @@
 <script src="historique.js"></script>
 <script>
 const HOUR = 3600e3, DAY = 24 * HOUR;
-// durée d'un restock de chaque boutique (le minuteur « New eggs in 5:59 » du jeu) : sert au calcul de la chance par restock
-const RESTOCK_MIN = { eggs: 6, seed: 5 };
+// durée d'un restock de chaque boutique (œufs 6 min 30, graines 5 min) : sert au calcul de la chance par restock
+const RESTOCK_MIN = { eggs: 6.5, seed: 5 };
 // le bot envoie un signal toutes les 10 min quand il tourne ; sans nouvelles depuis 25 min (PC éteint, plantage), il est « inactif »
 const ACTIVE_MAX = 25 * 60e3;
 // statut en direct via ntfy.sh (GitHub Pages met 1-2 min à publier) ; même canal que STATUS_URL dans shop_bot.py

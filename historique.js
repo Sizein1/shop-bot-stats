@@ -1,4 +1,4 @@
-window.HISTORY = [["2026-10-14T00:24:03", "debut", "", ""], ["2026-10-14T00:24:08", "stock", "eggs", "Inferno Egg"], ["2026-10-14T00:24:18", "fin", "", ""]];
+window.HISTORY = [["2026-10-14T00:24:03", "debut", "", ""], ["2026-10-14T00:24:08", "stock", "eggs", "Inferno Egg"], ["2026-10-14T00:24:18", "fin", "", ""], ["2026-10-14T00:24:33", "debut", "", ""], ["2026-10-14T00:24:57", "stock", "seed", "Void Seed Pack"], ["2026-10-14T00:24:58", "stock", "seed", "Celestial Seed Pack"], ["2026-10-14T00:25:41", "fin", "", ""]];
 window.ITEMS = [{"shop": "eggs", "name": "Inferno Egg"}, {"shop": "eggs", "name": "Solar Egg"}, {"shop": "eggs", "name": "Sealed Eye Egg"}, {"shop": "eggs", "name": "Abyss Egg"}, {"shop": "seed", "name": "Mutant Seed Pack"}, {"shop": "seed", "name": "Void Seed Pack"}, {"shop": "seed", "name": "Celestial Seed Pack"}, {"shop": "seed", "name": "Spooky Seed Pack"}];
-window.GENERATED = "2026-10-14T00:24:19";
+window.GENERATED = "2026-10-14T00:25:42";
 window.BOT = {"actif": false};

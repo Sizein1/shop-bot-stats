@@ -155,13 +155,19 @@
 const HOUR = 3600e3, DAY = 24 * HOUR;
 // le bot envoie un signal toutes les 10 min quand il tourne ; sans nouvelles depuis 25 min (PC éteint, plantage), il est « inactif »
 const ACTIVE_MAX = 25 * 60e3;
+// statut en direct via ntfy.sh (GitHub Pages met 1-2 min à publier) ; même canal que STATUS_URL dans shop_bot.py
+const STATUS_URL = "https://ntfy.sh/shopbot-sizein1-42dad0def695";
 const state = { shop: "all", days: 7 };
-let NOW, GEN, ACTIVE, ITEMS, EVENTS, SESSIONS;
+let NOW, GEN, ACTIVE, ITEMS, EVENTS, SESSIONS, SEEN;
+let LIVE = null;  // dernier statut reçu en direct : { actif, time }
 
 function load() {
   NOW = new Date();
   GEN = window.GENERATED ? new Date(window.GENERATED) : NOW;  // dernier envoi de données par le bot
-  ACTIVE = !!(window.BOT && window.BOT.actif) && NOW - GEN < ACTIVE_MAX;
+  // le statut en direct l'emporte s'il est plus récent que les données GitHub
+  const live = LIVE && LIVE.time > GEN ? LIVE : null;
+  SEEN = live ? live.time : GEN;
+  ACTIVE = (live ? live.actif : !!(window.BOT && window.BOT.actif)) && NOW - SEEN < ACTIVE_MAX;
   ITEMS = window.ITEMS || [];
   EVENTS = (window.HISTORY || []).map(([t, e, shop, name]) => ({ t: new Date(t), e, shop, name })).sort((a, b) => a.t - b.t);
   // Sessions = périodes où le bot tournait (debut → fin). Une session sans « fin » se ferme à son dernier événement ;
@@ -173,7 +179,7 @@ function load() {
     else if (x.e === "fin") { if (start) SESSIONS.push([start, x.t]); start = null; }
     else last = x.t;
   }
-  if (start) SESSIONS.push([start, ACTIVE ? NOW : GEN]);
+  if (start) SESSIONS.push([start, ACTIVE ? NOW : SEEN]);
 }
 
 const fmtDur = ms => {
@@ -199,7 +205,7 @@ function render() {
 
   document.getElementById("status").innerHTML = ACTIVE
     ? `<span class="pill on"><i class="led"></i>ACTIF</span>`
-    : `<span class="pill off"><i class="led"></i>INACTIF</span>${window.GENERATED ? `<span class="since">vu ${fmtAgo(GEN)}</span>` : ""}`;
+    : `<span class="pill off"><i class="led"></i>INACTIF</span>${window.GENERATED || LIVE ? `<span class="since">vu ${fmtAgo(SEEN)}</span>` : ""}`;
   document.getElementById("sub").textContent = EVENTS.length
     ? `Données du bot depuis le ${fmtDate(first)} · mises à jour ${fmtAgo(GEN)}`
     : "Pas encore de données";
@@ -326,6 +332,24 @@ setInterval(() => {
   s.onerror = () => s.remove();
   document.body.appendChild(s);
 }, 60e3);
+
+// statut en direct : dernier message des 30 dernières min, puis écoute continue (quelques secondes de délai)
+function onStatus(m) {
+  if (m.event !== "message" || !/^(in)?actif$/.test(m.message)) return;
+  const time = new Date(m.time * 1000);
+  if (LIVE && LIVE.time > time) return;
+  LIVE = { actif: m.message === "actif", time };
+  load(); render();
+}
+fetch(STATUS_URL + "/json?poll=1&since=30m", { cache: "no-store" })
+  .then(r => r.text())
+  .then(t => t.split("\n").filter(Boolean).forEach(l => onStatus(JSON.parse(l))))
+  .catch(() => {})
+  .finally(() => {
+    const es = new EventSource(STATUS_URL + "/sse");  // se reconnecte tout seul si la connexion coupe
+    es.onmessage = e => onStatus(JSON.parse(e.data));
+  });
+setInterval(() => { load(); render(); }, 30e3);  // passe à « inactif » sans recharger si le bot ne donne plus signe de vie
 
 load();
 render();

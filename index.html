@@ -153,7 +153,8 @@ const STATUS_URL = "https://ntfy.sh/shopbot-sizein1-42dad0def695";
 const EMOJI = { eggs: "🥚", seed: "🌱" };
 const state = { shop: "all", days: 0 };
 let NOW, GEN, SEEN, ACTIVE, ITEMS, EVENTS, SESSIONS;
-let LIVE = null;  // dernier statut reçu en direct : { actif, time }
+let LIVE = null;      // dernier statut reçu en direct : { actif, time }
+const LIVE_STOCK = []; // apparitions reçues en direct, pas encore dans les données GitHub : [date, "stock", boutique, article]
 
 function load() {
   NOW = new Date();
@@ -162,7 +163,9 @@ function load() {
   SEEN = live ? live.time : GEN;
   ACTIVE = (live ? live.actif : !!(window.BOT && window.BOT.actif)) && NOW - SEEN < ACTIVE_MAX;
   ITEMS = window.ITEMS || [];
-  EVENTS = (window.HISTORY || []).map(([t, e, shop, name]) => ({ t: new Date(t), e, shop, name })).sort((a, b) => a.t - b.t);
+  const hist = window.HISTORY || [], known = new Set(hist.map(r => r.join("|")));
+  EVENTS = [...hist, ...LIVE_STOCK.filter(r => !known.has(r.join("|")))]  // sans doublon une fois arrivées sur GitHub
+    .map(([t, e, shop, name]) => ({ t: new Date(t), e, shop, name })).sort((a, b) => a.t - b.t);
   // Sessions = périodes où le bot tournait (debut → fin). Une session sans « fin » se ferme à son dernier événement ;
   // la dernière va jusqu'à maintenant si le bot est actif, sinon jusqu'à son dernier signal.
   SESSIONS = [];
@@ -321,15 +324,22 @@ setInterval(() => {
   document.body.appendChild(s);
 }, 60e3);
 
-// statut en direct : dernier message des 30 dernières min, puis écoute continue (quelques secondes de délai)
+// direct : messages des 12 dernières heures (durée gardée par ntfy.sh), puis écoute continue (quelques secondes de délai)
 function onStatus(m) {
-  if (m.event !== "message" || !/^(in)?actif$/.test(m.message)) return;
+  if (m.event !== "message") return;
+  const p = m.message.split(";");
+  if (p[0] === "stock" && p.length === 4) {  // « stock;boutique;article;date »
+    const row = [p[3], "stock", p[1], p[2]];
+    if (!LIVE_STOCK.some(r => r.join("|") === row.join("|"))) { LIVE_STOCK.push(row); load(); render(); }
+    return;
+  }
+  if (!/^(in)?actif$/.test(m.message)) return;
   const time = new Date(m.time * 1000);
   if (LIVE && LIVE.time > time) return;
   LIVE = { actif: m.message === "actif", time };
   load(); render();
 }
-fetch(STATUS_URL + "/json?poll=1&since=30m", { cache: "no-store" })
+fetch(STATUS_URL + "/json?poll=1&since=12h", { cache: "no-store" })
   .then(r => r.text())
   .then(t => t.split("\n").filter(Boolean).forEach(l => onStatus(JSON.parse(l))))
   .catch(() => {})

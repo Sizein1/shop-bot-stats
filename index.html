@@ -174,8 +174,6 @@
 <div id="tip"></div>
 <dialog id="admin" aria-labelledby="adminTitle"><div id="adminBody"></div></dialog>
 
-<script src="historique.js"></script>
-<script src="manuel.js"></script>
 <script>
 const HOUR = 3600e3, DAY = 24 * HOUR;
 // durée d'un restock de chaque boutique (œufs 6 min 30, graines 5 min) : sert au calcul de la chance par restock
@@ -354,16 +352,17 @@ document.addEventListener("mousemove", e => {
   tip.style.top = (e.clientY + 16) + "px";
 });
 
-// recharge les données chaque minute (le paramètre ?t= évite la version en cache)
-setInterval(() => {
-  for (const file of ["historique.js", "manuel.js"]) {
+// charge les données à l'ouverture puis chaque minute ; ?t= force la version fraîche
+// (GitHub autorise le navigateur à garder une copie 10 min : sans ça, la page montrerait d'anciennes données)
+function refreshData() {
+  return Promise.all(["historique.js", "manuel.js"].map(file => new Promise(done => {
     const s = document.createElement("script");
     s.src = file + "?t=" + Date.now();
-    s.onload = () => { s.remove(); load(); render(); };
-    s.onerror = () => s.remove();
+    s.onload = s.onerror = () => { s.remove(); done(); };
     document.body.appendChild(s);
-  }
-}, 60e3);
+  }))).then(() => { load(); render(); });
+}
+setInterval(refreshData, 60e3);
 
 // direct : messages des 12 dernières heures (durée gardée par ntfy.sh), puis écoute continue (quelques secondes de délai)
 function onStatus(m) {
@@ -552,7 +551,7 @@ adminBody.onclick = async e => {
 };
 
 load();
-render();
+refreshData();
 </script>
 </body>
 </html>

@@ -109,8 +109,39 @@
   .empty { text-align: center; padding: 48px 16px; font-size: 18px; text-shadow: var(--stroke-sm); }
   #tip { position: fixed; pointer-events: none; background: var(--panel); color: #fff; border: 3px solid #000; box-shadow: 0 4px 0 #000;
          border-radius: 10px; padding: 6px 10px; font-size: 13px; font-weight: 600; display: none; z-index: 10; white-space: nowrap; }
+  /* page admin */
+  .admin-open { margin-left: auto; }
+  dialog { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 0; border: 0; border-radius: 20px;
+           background: var(--rainbow); padding: 5px; box-shadow: 0 6px 0 #000; color: var(--ink); }
+  dialog::backdrop { background: rgba(10, 6, 30, .7); }
+  #adminBody { background: var(--panel); border: 3px solid #000; border-radius: 16px; padding: 18px; display: grid; gap: 12px; }
+  #adminBody h2 { margin: 0; }
+  #adminBody label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
+  #adminBody input[type=password], #adminBody input[type=datetime-local] {
+    font: 600 15px "Fredoka", "Segoe UI", sans-serif; color: #fff; background: var(--row); border: 3px solid #000; border-radius: 10px; padding: 8px 10px; }
+  #adminBody .check { display: flex; align-items: center; gap: 8px; }
+  .pick { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .pick button, .act button {
+    font: 700 14px "Fredoka", "Segoe UI", sans-serif; color: #fff; text-shadow: var(--stroke-sm); cursor: pointer; text-align: left;
+    padding: 7px 10px 9px; border: 3px solid #000; border-radius: 10px; background: var(--row); box-shadow: inset 0 -4px 0 rgba(0,0,0,.35); }
+  .pick button[aria-pressed="true"] { background: linear-gradient(#69e66b, #36bd38); box-shadow: inset 0 -4px 0 var(--green-dk); }
+  .act { display: flex; flex-wrap: wrap; gap: 8px; }
+  .act button { text-align: center; background: linear-gradient(#69e66b, #36bd38); box-shadow: inset 0 -4px 0 var(--green-dk); }
+  .act button.gray { background: linear-gradient(#e6e6e6, #a9a9a9); box-shadow: inset 0 -4px 0 var(--gray-dk); }
+  .act button.red { background: linear-gradient(#f2625d, #d0302b); box-shadow: inset 0 -4px 0 var(--red-dk); }
+  .act button:disabled { opacity: .5; cursor: wait; }
+  .msg { font-size: 14px; font-weight: 600; min-height: 1.4em; }
+  .msg .ok { color: var(--money); } .msg .err { color: #ff6b66; }
+  .manual-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .manual-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 6px 10px;
+                    background: var(--row); border: 2px solid #000; border-radius: 10px; font-weight: 600; font-size: 14px; }
+  .manual-list li button { font: 700 12px "Fredoka", sans-serif; color: #fff; cursor: pointer; padding: 3px 8px; border: 2px solid #000; border-radius: 8px;
+                           background: linear-gradient(#f2625d, #d0302b); }
+  details summary { cursor: pointer; font-weight: 700; }
+  details ol { margin: 8px 0 0; padding-left: 20px; font-size: 14px; color: var(--ink-2); }
   @media (max-width: 600px) {
     .banner h1 { font-size: 26px; padding-right: 0; } .banner .sub { padding-right: 0; }
+    .admin-open { margin-left: 0; }
     .status { position: static; transform: none; text-align: left; margin-top: 10px; }
   }
 </style>
@@ -135,13 +166,16 @@
         <button data-v="7" aria-pressed="false">7 jours</button>
         <button data-v="0" aria-pressed="true">Depuis le début</button>
       </div>
+      <div class="seg admin-open"><button id="adminBtn" aria-haspopup="dialog">🔒 Admin</button></div>
     </div>
     <div id="content"></div>
   </div></div>
 </main>
 <div id="tip"></div>
+<dialog id="admin" aria-labelledby="adminTitle"><div id="adminBody"></div></dialog>
 
 <script src="historique.js"></script>
+<script src="manuel.js"></script>
 <script>
 const HOUR = 3600e3, DAY = 24 * HOUR;
 // durée d'un restock de chaque boutique (œufs 6 min 30, graines 5 min) : sert au calcul de la chance par restock
@@ -154,7 +188,9 @@ const EMOJI = { eggs: "🥚", seed: "🌱" };
 const state = { shop: "all", days: 0 };
 let NOW, GEN, SEEN, ACTIVE, ITEMS, EVENTS, SESSIONS;
 let LIVE = null;      // dernier statut reçu en direct : { actif, time }
-const LIVE_STOCK = []; // apparitions reçues en direct, pas encore dans les données GitHub : [date, "stock", boutique, article]
+const LIVE_STOCK = []; // apparitions reçues en direct, pas encore dans les données GitHub : [date, "stock"|"manuel", boutique, article]
+const REMOVED = new Set(); // ajouts manuels supprimés depuis la page admin (encore présents quelques minutes ailleurs)
+const key = r => r.join("|");
 
 function load() {
   NOW = new Date();
@@ -163,8 +199,9 @@ function load() {
   SEEN = live ? live.time : GEN;
   ACTIVE = (live ? live.actif : !!(window.BOT && window.BOT.actif)) && NOW - SEEN < ACTIVE_MAX;
   ITEMS = window.ITEMS || [];
-  const hist = window.HISTORY || [], known = new Set(hist.map(r => r.join("|")));
-  EVENTS = [...hist, ...LIVE_STOCK.filter(r => !known.has(r.join("|")))]  // sans doublon une fois arrivées sur GitHub
+  const hist = [...(window.HISTORY || []), ...(window.MANUAL || [])], known = new Set(hist.map(key));
+  EVENTS = [...hist, ...LIVE_STOCK.filter(r => !known.has(key(r)))]  // sans doublon une fois arrivées sur GitHub
+    .filter(r => !REMOVED.has(key(r)))
     .map(([t, e, shop, name]) => ({ t: new Date(t), e, shop, name })).sort((a, b) => a.t - b.t);
   // Sessions = périodes où le bot tournait (debut → fin). Une session sans « fin » se ferme à son dernier événement ;
   // la dernière va jusqu'à maintenant si le bot est actif, sinon jusqu'à son dernier signal.
@@ -173,7 +210,7 @@ function load() {
   for (const x of EVENTS) {
     if (x.e === "debut") { if (start) SESSIONS.push([start, last]); start = last = x.t; }
     else if (x.e === "fin") { if (start) SESSIONS.push([start, x.t]); start = null; }
-    else last = x.t;
+    else if (x.e === "stock") last = x.t;  // un ajout manuel ne prouve pas que le bot tournait
   }
   if (start) SESSIONS.push([start, ACTIVE ? NOW : SEEN]);
 }
@@ -217,17 +254,18 @@ function render() {
 
   const from = state.days ? new Date(NOW - state.days * DAY) : first;
   const inShop = s => state.shop === "all" || s === state.shop;
-  const stock = EVENTS.filter(x => x.e === "stock" && x.t >= from && inShop(x.shop));
+  const stock = EVENTS.filter(x => (x.e === "stock" || x.e === "manuel") && x.t >= from && inShop(x.shop));
+  const botSeen = stock.filter(x => x.e === "stock");  // chances et moyennes : seulement ce que le bot a vu pendant qu'il surveillait
   const watched = SESSIONS.reduce((s, [a, b]) => s + overlap(a, b, from, NOW), 0);  // temps où le bot regardait
 
   // --- une carte par article ---
   const items = ITEMS.filter(i => inShop(i.shop)).map(it => {
-    const hits = stock.filter(x => x.name === it.name);
+    const hits = stock.filter(x => x.name === it.name), nBot = botSeen.filter(x => x.name === it.name).length;
     const restocks = watched / (RESTOCK_MIN[it.shop] * 60e3);
     const byHour = Array(24).fill(0); hits.forEach(x => byHour[x.t.getHours()]++);
     const bestH = byHour.indexOf(Math.max(...byHour));
-    return { ...it, n: hits.length, last: hits.length ? hits[hits.length - 1].t : null,
-             chance: restocks ? Math.min(100, hits.length / restocks * 100) : 0, bestH };
+    return { ...it, n: hits.length, nBot, last: hits.length ? hits[hits.length - 1].t : null,
+             chance: restocks ? Math.min(100, nBot / restocks * 100) : 0, bestH };
   }).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
   const maxChance = Math.max(1, ...items.map(i => i.chance));
   const cards = items.map(r => {
@@ -238,7 +276,7 @@ function render() {
       <div class="meter" title="Chance à chaque restock"><i style="width:${(r.chance / maxChance * 100).toFixed(1)}%"></i></div>
       <dl>
         <dt>Chance par restock</dt><dd>${fmtPct(r.chance)}</dd>
-        <dt>En moyenne</dt><dd>${r.n ? "toutes les " + fmtDur(watched / r.n) : "—"}</dd>
+        <dt>En moyenne</dt><dd>${r.nBot ? "toutes les " + fmtDur(watched / r.nBot) : "—"}</dd>
         <dt>Dernière fois</dt><dd>${r.last ? fmtAgo(r.last) : "—"}</dd>
         <dt>Heure la plus fréquente</dt><dd>${r.n ? `${r.bestH}h – ${r.bestH + 1}h` : "—"}</dd>
       </dl></div>`;
@@ -248,7 +286,7 @@ function render() {
   const top = items[0], lastHit = stock[stock.length - 1];
   const tiles = `<div class="tiles">
       <div class="box tile"><div class="label">Apparitions</div><div class="value">${stock.length}</div>
-        <div class="note">${stock.length ? "1 toutes les " + fmtDur(watched / stock.length) + " en moyenne" : "aucune sur la période"}</div></div>
+        <div class="note">${botSeen.length ? "1 toutes les " + fmtDur(watched / botSeen.length) + " en moyenne" : stock.length ? "" : "aucune sur la période"}</div></div>
       <div class="box tile"><div class="label">Temps surveillé</div><div class="value">${fmtDur(watched)}</div>
         <div class="note">le bot ne voit rien quand il est arrêté</div></div>
       <div class="box tile"><div class="label">Le plus fréquent</div><div class="value">${top && top.n ? esc(top.name) : "—"}</div>
@@ -268,8 +306,8 @@ function render() {
   }
   const perHour = Array(24).fill(0); stock.forEach(x => perHour[x.t.getHours()]++);
   const hourChart = bars(perHour, perHour.map((_, h) => h % 3 ? "" : h + "h"),
-    perHour.map((v, h) => watchedH[h] ? `${h}h – ${h + 1}h : ${v} apparition${v > 1 ? "s" : ""} (surveillé ${fmtDur(watchedH[h])})` : `${h}h – ${h + 1}h : pas surveillé`),
-    watchedH.map(w => !w));
+    perHour.map((v, h) => `${h}h – ${h + 1}h : ${v} apparition${v > 1 ? "s" : ""}` + (watchedH[h] ? ` (surveillé ${fmtDur(watchedH[h])})` : " · bot jamais actif à cette heure")),
+    watchedH.map((w, h) => !w && !perHour[h]));
 
   // --- par jour (14 derniers jours max) ---
   const day0 = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
@@ -287,11 +325,12 @@ function render() {
 
   const recent = `<h2>Dernières apparitions</h2>
     <div class="box">${stock.length ? `<ul class="recent">${stock.slice(-20).reverse().map(x =>
-      `<li><time>${fmtDate(x.t)}</time>${EMOJI[x.shop]} ${esc(x.name)}</li>`).join("")}</ul>`
+      `<li><time>${fmtDate(x.t)}</time>${EMOJI[x.shop]} ${esc(x.name)}${x.e === "manuel" ? ' <span title="ajouté à la main">✋</span>' : ""}</li>`).join("")}</ul>`
       : `<p class="hint">Aucune apparition sur la période.</p>`}</div>`;
 
   box.innerHTML = tiles +
-    `<h2>Chaque article</h2><p class="hint">« Chance par restock » : sur 100 restocks, combien de fois l'article était dans la boutique.</p>
+    `<h2>Chaque article</h2><p class="hint">« Chance par restock » : sur 100 restocks, combien de fois l'article était dans la boutique.
+       Les ajouts à la main (✋) comptent dans « fois », mais pas dans la chance ni la moyenne : le bot ne surveillait pas.</p>
      <div class="cards">${cards}</div>` + charts + recent;
 }
 
@@ -317,20 +356,28 @@ document.addEventListener("mousemove", e => {
 
 // recharge les données chaque minute (le paramètre ?t= évite la version en cache)
 setInterval(() => {
-  const s = document.createElement("script");
-  s.src = "historique.js?t=" + Date.now();
-  s.onload = () => { s.remove(); load(); render(); };
-  s.onerror = () => s.remove();
-  document.body.appendChild(s);
+  for (const file of ["historique.js", "manuel.js"]) {
+    const s = document.createElement("script");
+    s.src = file + "?t=" + Date.now();
+    s.onload = () => { s.remove(); load(); render(); };
+    s.onerror = () => s.remove();
+    document.body.appendChild(s);
+  }
 }, 60e3);
 
 // direct : messages des 12 dernières heures (durée gardée par ntfy.sh), puis écoute continue (quelques secondes de délai)
 function onStatus(m) {
   if (m.event !== "message") return;
   const p = m.message.split(";");
-  if (p[0] === "stock" && p.length === 4) {  // « stock;boutique;article;date »
-    const row = [p[3], "stock", p[1], p[2]];
-    if (!LIVE_STOCK.some(r => r.join("|") === row.join("|"))) { LIVE_STOCK.push(row); load(); render(); }
+  // « stock|manuel|suppr;boutique;article;date » : apparition vue par le bot, ajoutée ou supprimée depuis la page admin
+  if (["stock", "manuel", "suppr"].includes(p[0]) && p.length === 4) {
+    if (p[0] === "suppr") REMOVED.add(key([p[3], "manuel", p[1], p[2]]));
+    else {
+      const row = [p[3], p[0], p[1], p[2]];
+      REMOVED.delete(key(row));
+      if (!LIVE_STOCK.some(r => key(r) === key(row))) LIVE_STOCK.push(row);
+    }
+    load(); render();
     return;
   }
   if (!/^(in)?actif$/.test(m.message)) return;
@@ -348,6 +395,161 @@ fetch(STATUS_URL + "/json?poll=1&since=12h", { cache: "no-store" })
     es.onmessage = e => onStatus(JSON.parse(e.data));
   });
 setInterval(() => { load(); render(); }, 30e3);  // passe à « inactif » sans recharger si le bot ne donne plus signe de vie
+
+// ---------- Page admin : ajouter à la main une apparition vue quand le bot était arrêté ----------
+// L'accès repose sur une clé GitHub que seul le propriétaire possède : sans elle, impossible d'écrire dans le dépôt.
+// La clé et l'URL du webhook Discord restent dans CE navigateur (localStorage), jamais dans le site publié.
+const REPO = "Sizein1/shop-bot-stats";
+const store = {
+  get: k => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch {} },
+};
+const localISO = d => new Date(d - d.getTimezoneOffset() * 60e3).toISOString().slice(0, 19);
+const b64enc = s => btoa(Array.from(new TextEncoder().encode(s), c => String.fromCharCode(c)).join(""));
+const b64dec = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g, "")), c => c.charCodeAt(0)));
+
+async function gh(path, opts = {}) {
+  const r = await fetch(`https://api.github.com/repos/${REPO}${path}`, { cache: "no-store", ...opts,
+    headers: { Authorization: "Bearer " + store.get("gh_token"), Accept: "application/vnd.github+json" } });
+  if (!r.ok) throw Object.assign(new Error(r.status === 401 ? "clé GitHub refusée ou expirée"
+    : r.status === 403 || r.status === 404 ? "cette clé n'a pas le droit de modifier shop-bot-stats" : `GitHub a répondu ${r.status}`), { status: r.status });
+  return r.json();
+}
+
+// relit manuel.js sur GitHub, applique le changement et le réenregistre
+async function editManual(change) {
+  for (let attempt = 0; ; attempt++) {
+    const f = await gh("/contents/manuel.js");
+    const text = b64dec(f.content);
+    const rows = JSON.parse(text.slice(text.indexOf("["), text.lastIndexOf("]") + 1));
+    change(rows);
+    try {
+      await gh("/contents/manuel.js", { method: "PUT", body: JSON.stringify({ message: "Page admin : ajouts manuels",
+        content: b64enc("window.MANUAL = " + JSON.stringify(rows) + ";\n"), sha: f.sha }) });
+      window.MANUAL = rows;
+      return;
+    } catch (e) { if (![409, 422].includes(e.status) || attempt) throw e; }  // le bot a envoyé au même moment : on relit et on recommence
+  }
+}
+
+const dlg = document.getElementById("admin"), adminBody = document.getElementById("adminBody");
+let pick = null;
+const setMsg = (html) => { const m = document.getElementById("adminMsg"); if (m) m.innerHTML = html; };
+document.getElementById("adminBtn").onclick = () => { drawAdmin(); dlg.showModal(); };
+dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });  // clic à côté de la fenêtre = fermer
+
+function drawLogin(msg = "") {
+  adminBody.innerHTML = `
+    <h2 id="adminTitle">🔒 Admin</h2>
+    <p class="hint" style="margin:0">Réservé au propriétaire : il faut ta clé GitHub. Elle reste dans ce navigateur et n'est jamais publiée.</p>
+    <label>Clé GitHub<input type="password" id="tokIn" autocomplete="off" placeholder="github_pat_…"></label>
+    <label>Webhook Discord (pour les notifs)<input type="password" id="hookIn" autocomplete="off" placeholder="https://discord.com/api/webhooks/…"></label>
+    <div class="act"><button id="loginBtn">Se connecter</button><button class="gray" id="closeBtn">Fermer</button></div>
+    <div class="msg" id="adminMsg" role="status">${msg}</div>
+    <details><summary>Comment créer ma clé GitHub ?</summary><ol>
+      <li>Sur github.com : ta photo de profil → <b>Settings</b> → <b>Developer settings</b> → <b>Personal access tokens</b> → <b>Fine-grained tokens</b> → <b>Generate new token</b>.</li>
+      <li>Nom : « Stats Shop admin », expiration au choix.</li>
+      <li><b>Repository access</b> : <i>Only select repositories</i> → <b>shop-bot-stats</b>.</li>
+      <li><b>Permissions</b> → <b>Contents</b> : <i>Read and write</i>. Rien d'autre.</li>
+      <li><b>Generate token</b>, copie la clé et colle-la ici.</li></ol></details>`;
+}
+
+function drawAdmin(msg = "") {
+  if (!store.get("gh_token")) return drawLogin(msg);
+  const hook = store.get("discord_url");
+  const mine = (window.MANUAL || []).filter(r => !REMOVED.has(key(r))).slice(-8).reverse();
+  adminBody.innerHTML = `
+    <h2 id="adminTitle">🔓 Admin</h2>
+    <div><b>1. Quel article est apparu ?</b>
+      <div class="pick" style="margin-top:6px">${(window.ITEMS || []).map((it, i) =>
+        `<button data-i="${i}" aria-pressed="${pick === i}">${EMOJI[it.shop]} ${esc(it.name)}</button>`).join("")}</div></div>
+    <label>2. Quand ?<input type="datetime-local" id="when" step="1" value="${localISO(new Date())}"></label>
+    <label class="check"><input type="checkbox" id="discordOn" ${hook ? "checked" : "disabled"}>
+      Envoyer la notif Discord${hook ? "" : " (ajoute ton webhook dans Réglages)"}</label>
+    <div class="act"><button id="addBtn">➕ Ajouter l'apparition</button><button class="gray" id="closeBtn">Fermer</button></div>
+    <div class="msg" id="adminMsg" role="status">${msg}</div>
+    ${mine.length ? `<div><b>Derniers ajouts à la main</b><ul class="manual-list" style="margin-top:6px">${mine.map(r =>
+      `<li><span>${fmtDate(new Date(r[0]))} · ${EMOJI[r[2]]} ${esc(r[3])}</span><button data-del="${esc(key(r))}">Supprimer</button></li>`).join("")}</ul></div>` : ""}
+    <details><summary>Réglages</summary>
+      <label style="margin-top:8px">Webhook Discord<input type="password" id="hookIn" autocomplete="off" placeholder="https://discord.com/api/webhooks/…"></label>
+      <div class="act" style="margin-top:8px"><button id="saveHook">Enregistrer le webhook</button><button class="red" id="logout">Se déconnecter</button></div>
+    </details>`;
+}
+
+const validHook = u => /^https:\/\/(discord|discordapp)\.com\/api\/webhooks\/\d+\/[\w-]+$/.test(u);
+
+adminBody.onclick = async e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.id === "closeBtn") return dlg.close();
+
+  if (b.id === "loginBtn") {
+    const tok = document.getElementById("tokIn").value.trim(), hook = document.getElementById("hookIn").value.trim();
+    if (!tok) return setMsg('<span class="err">Colle ta clé GitHub.</span>');
+    if (hook && !validHook(hook)) return setMsg('<span class="err">Ce webhook Discord n\'a pas le bon format.</span>');
+    b.disabled = true; setMsg("Vérification…");
+    store.set("gh_token", tok);
+    try { await gh("/contents/manuel.js"); }
+    catch (err) { store.set("gh_token", null); return drawLogin(`<span class="err">❌ ${esc(err.message)}</span>`); }
+    if (hook) store.set("discord_url", hook);
+    return drawAdmin('<span class="ok">✅ Connecté</span>');
+  }
+
+  if (b.dataset.i !== undefined) {
+    pick = Number(b.dataset.i);
+    adminBody.querySelectorAll(".pick button").forEach(x => x.setAttribute("aria-pressed", x === b));
+    return;
+  }
+
+  if (b.id === "addBtn") {
+    const it = (window.ITEMS || [])[pick];
+    if (!it) return setMsg('<span class="err">Choisis d\'abord l\'article.</span>');
+    const when = document.getElementById("when").value;
+    if (!when) return setMsg('<span class="err">Indique l\'heure.</span>');
+    const ts = when.length === 16 ? when + ":00" : when, row = [ts, "manuel", it.shop, it.name];
+    const sendDiscord = document.getElementById("discordOn").checked;
+    b.disabled = true; setMsg("Enregistrement…");
+    try { await editManual(rows => rows.push(row)); }
+    catch (err) { b.disabled = false; return setMsg(`<span class="err">❌ Pas enregistré : ${esc(err.message)}</span>`); }
+    fetch(STATUS_URL, { method: "POST", body: `manuel;${it.shop};${it.name};${ts}` }).catch(() => {});  // visible tout de suite partout
+    REMOVED.delete(key(row));
+    if (!LIVE_STOCK.some(r => key(r) === key(row))) LIVE_STOCK.push(row);
+    load(); render();
+    let discordMsg = "";
+    if (sendDiscord) {
+      try {
+        const r = await fetch(store.get("discord_url"), { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: `@everyone ${EMOJI[it.shop]} ${it.name} en stock !`, allowed_mentions: { parse: ["everyone"] } }) });
+        discordMsg = r.ok ? " + notif Discord envoyée" : ` <span class="err">mais Discord a refusé la notif (${r.status})</span>`;
+      } catch { discordMsg = ' <span class="err">mais la notif Discord n\'est pas partie</span>'; }
+    }
+    pick = null;
+    return drawAdmin(`<span class="ok">✅ ${EMOJI[it.shop]} ${esc(it.name)} ajouté</span>${discordMsg}`);
+  }
+
+  if (b.dataset.del) {
+    const k = b.dataset.del, [ts, , shop, name] = k.split("|");
+    if (!confirm(`Supprimer ${name} du ${fmtDate(new Date(ts))} ?`)) return;
+    b.disabled = true;
+    try { await editManual(rows => { const i = rows.findIndex(r => key(r) === k); if (i >= 0) rows.splice(i, 1); }); }
+    catch (err) { b.disabled = false; return setMsg(`<span class="err">❌ Pas supprimé : ${esc(err.message)}</span>`); }
+    fetch(STATUS_URL, { method: "POST", body: `suppr;${shop};${name};${ts}` }).catch(() => {});
+    REMOVED.add(k);
+    load(); render();
+    return drawAdmin('<span class="ok">✅ Supprimé</span>');
+  }
+
+  if (b.id === "saveHook") {
+    const hook = document.getElementById("hookIn").value.trim();
+    if (!validHook(hook)) return setMsg('<span class="err">Ce webhook Discord n\'a pas le bon format.</span>');
+    store.set("discord_url", hook);
+    return drawAdmin('<span class="ok">✅ Webhook enregistré</span>');
+  }
+
+  if (b.id === "logout") {
+    store.set("gh_token", null); store.set("discord_url", null);
+    return drawLogin('<span class="ok">Déconnecté : la clé et le webhook sont effacés de ce navigateur.</span>');
+  }
+};
 
 load();
 render();

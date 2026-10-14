@@ -6,68 +6,8 @@
 <title>Shop Bot · Statistiques</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 <style>
-  /* Thème « boutique Roblox » : un seul thème sombre, comme les menus du jeu */
-  :root {
-    color-scheme: dark;
-    --panel: #17122b; --panel-2: #231b3d; --row: #2b2249; --line: #3b3160;
-    --ink: #ffffff; --ink-2: #d6d0f0; --muted: #a59fc4;
-    --green-dk: #23921f; --red-dk: #9c1f1b; --gray-dk: #8d8d8d;
-    --money: #5dff4f; --bar: #47d64a;
-    --eggs: #3987e5; --seed: #d95926;
-    --rainbow: linear-gradient(90deg, #ff3b3b, #ff9a1f, #ffe11f, #45e04a, #1fd1ff, #4b6bff, #c64bff, #ff3b3b);
-    --stroke: 0 3px 0 #000, 2px 2px 0 #000, -2px 2px 0 #000, 2px -2px 0 #000, -2px -2px 0 #000, 0 -2px 0 #000, 2px 0 0 #000, -2px 0 0 #000;
-    --stroke-sm: 0 2px 0 #000, 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; color: var(--ink); font: 500 15px/1.45 "Fredoka", "Segoe UI", system-ui, sans-serif;
-    background:
-      radial-gradient(circle at 15% 10%, rgba(255,255,255,.14), transparent 40%),
-      repeating-conic-gradient(rgba(255,255,255,.035) 0 25%, transparent 0 50%) 0 0 / 48px 48px,
-      linear-gradient(160deg, #3b5bff 0%, #7a3cff 45%, #c23aa8 100%);
-    background-attachment: fixed;
-  }
-  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
-  .stroke { color: #fff; text-shadow: var(--stroke); }
-
-  /* bandeau vert façon « Egg Shop » */
-  .banner {
-    position: relative; border: 4px solid #000; border-radius: 16px; padding: 14px 22px;
-    background: repeating-linear-gradient(-45deg, rgba(255,255,255,.12) 0 14px, transparent 14px 28px), linear-gradient(#6ae36a, #3cc23c);
-    box-shadow: 0 6px 0 #000;
-  }
-  .banner h1 { margin: 0; font-size: 34px; font-weight: 700; letter-spacing: .5px; line-height: 1.1; padding-right: 150px; }
-  .banner .sub { margin: 4px 0 0; font-size: 14px; font-weight: 600; text-shadow: var(--stroke-sm); padding-right: 150px; }
-  .status { position: absolute; top: 50%; right: 18px; transform: translateY(-50%); text-align: right; }
-  .status .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 8px; border: 3px solid #000; border-radius: 10px;
-                  font-weight: 700; font-size: 18px; color: #fff; text-shadow: var(--stroke-sm); }
-  .status .on { background: linear-gradient(#69e66b, #36bd38); box-shadow: inset 0 -4px 0 var(--green-dk); }
-  .status .off { background: linear-gradient(#f2625d, #d0302b); box-shadow: inset 0 -4px 0 var(--red-dk); }
-  .status .led { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #000; background: #fff; }
-  .status .on .led { animation: pulse 1.6s ease-in-out infinite; }
-  @keyframes pulse { 50% { opacity: .35; } }
-  @media (prefers-reduced-motion: reduce) { .status .on .led { animation: none; } }
-  .status .since { display: block; margin-top: 4px; font-size: 12px; font-weight: 600; text-shadow: var(--stroke-sm); }
-
-  /* cadre arc-en-ciel autour du contenu, comme la fenêtre de la boutique */
-  .frame { margin-top: 18px; padding: 5px; border-radius: 20px; background: var(--rainbow); box-shadow: 0 6px 0 #000; }
-  .frame > .inner { background: var(--panel); border: 3px solid #000; border-radius: 16px; padding: 18px; }
-
-  .filters { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 18px; }
-  .seg { display: inline-flex; flex-wrap: wrap; gap: 6px; }
-  .seg button {
-    font: 700 15px "Fredoka", "Segoe UI", sans-serif; color: #fff; text-shadow: var(--stroke-sm); cursor: pointer;
-    padding: 6px 14px 8px; border: 3px solid #000; border-radius: 10px;
-    background: linear-gradient(#e6e6e6, #a9a9a9); box-shadow: inset 0 -4px 0 var(--gray-dk);
-  }
-  .seg button:hover { filter: brightness(1.08); }
-  .seg button:active { transform: translateY(2px); }
-  .seg button[aria-pressed="true"] { background: linear-gradient(#69e66b, #36bd38); box-shadow: inset 0 -4px 0 var(--green-dk); }
-
-  h2 { margin: 6px 0 4px; font-size: 24px; font-weight: 700; color: #fff; text-shadow: var(--stroke); }
-  .hint { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
-  .box { background: var(--panel-2); border: 3px solid #000; border-radius: 14px; padding: 12px 16px 14px; box-shadow: inset 0 -4px 0 rgba(0,0,0,.35); }
 
   /* chiffres clés */
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 22px; }
@@ -107,47 +47,11 @@
   .recent li { padding: 6px 10px; margin-bottom: 6px; break-inside: avoid; background: var(--row); border: 2px solid #000; border-radius: 10px; font-weight: 600; }
   .recent time { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 8px; font-weight: 500; }
   .empty { text-align: center; padding: 48px 16px; font-size: 18px; text-shadow: var(--stroke-sm); }
-  #tip { position: fixed; pointer-events: none; background: var(--panel); color: #fff; border: 3px solid #000; box-shadow: 0 4px 0 #000;
-         border-radius: 10px; padding: 6px 10px; font-size: 13px; font-weight: 600; display: none; z-index: 10; white-space: nowrap; }
-  /* page admin */
-  .admin-open { margin-left: auto; }
-  dialog { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 0; border: 0; border-radius: 20px;
-           background: var(--rainbow); padding: 5px; box-shadow: 0 6px 0 #000; color: var(--ink); }
-  dialog::backdrop { background: rgba(10, 6, 30, .7); }
-  #adminBody { background: var(--panel); border: 3px solid #000; border-radius: 16px; padding: 18px; display: grid; gap: 12px; }
-  #adminBody h2 { margin: 0; }
-  #adminBody label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
-  #adminBody input[type=password], #adminBody input[type=datetime-local] {
-    font: 600 15px "Fredoka", "Segoe UI", sans-serif; color: #fff; background: var(--row); border: 3px solid #000; border-radius: 10px; padding: 8px 10px; }
-  #adminBody .check { display: flex; align-items: center; gap: 8px; }
-  .pick { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
-  .pick button, .act button {
-    font: 700 14px "Fredoka", "Segoe UI", sans-serif; color: #fff; text-shadow: var(--stroke-sm); cursor: pointer; text-align: left;
-    padding: 7px 10px 9px; border: 3px solid #000; border-radius: 10px; background: var(--row); box-shadow: inset 0 -4px 0 rgba(0,0,0,.35); }
-  .pick button[aria-pressed="true"] { background: linear-gradient(#69e66b, #36bd38); box-shadow: inset 0 -4px 0 var(--green-dk); }
-  .act { display: flex; flex-wrap: wrap; gap: 8px; }
-  .act button { text-align: center; background: linear-gradient(#69e66b, #36bd38); box-shadow: inset 0 -4px 0 var(--green-dk); }
-  .act button.gray { background: linear-gradient(#e6e6e6, #a9a9a9); box-shadow: inset 0 -4px 0 var(--gray-dk); }
-  .act button.red { background: linear-gradient(#f2625d, #d0302b); box-shadow: inset 0 -4px 0 var(--red-dk); }
-  .act button:disabled { opacity: .5; cursor: wait; }
-  .msg { font-size: 14px; font-weight: 600; min-height: 1.4em; }
-  .msg .ok { color: var(--money); } .msg .err { color: #ff6b66; }
-  .manual-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-  .manual-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 6px 10px;
-                    background: var(--row); border: 2px solid #000; border-radius: 10px; font-weight: 600; font-size: 14px; }
-  .manual-list li button { font: 700 12px "Fredoka", sans-serif; color: #fff; cursor: pointer; padding: 3px 8px; border: 2px solid #000; border-radius: 8px;
-                           background: linear-gradient(#f2625d, #d0302b); }
-  details summary { cursor: pointer; font-weight: 700; }
-  details ol { margin: 8px 0 0; padding-left: 20px; font-size: 14px; color: var(--ink-2); }
-  @media (max-width: 600px) {
-    .banner h1 { font-size: 26px; padding-right: 0; } .banner .sub { padding-right: 0; }
-    .admin-open { margin-left: 0; }
-    .status { position: static; transform: none; text-align: left; margin-top: 10px; }
-  }
 </style>
 </head>
 <body>
 <main>
+  <nav class="tabs"><a href="./" aria-current="page">📊 Stats</a><a href="plantes.html">🌱 Index</a></nav>
   <header class="banner">
     <h1 class="stroke">📊 Stats Shop</h1>
     <p class="sub" id="sub"></p>
@@ -174,6 +78,7 @@
 <div id="tip"></div>
 <dialog id="admin" aria-labelledby="adminTitle"><div id="adminBody"></div></dialog>
 
+<script src="commun.js"></script>
 <script>
 const HOUR = 3600e3, DAY = 24 * HOUR;
 // durée d'un restock de chaque boutique (œufs 6 min 30, graines 5 min) : sert au calcul de la chance par restock
@@ -223,7 +128,6 @@ const fmtDur = ms => {
 const fmtDate = d => d.toLocaleString("fr-FR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const fmtAgo = d => NOW - d < 60e3 ? "à l'instant" : "il y a " + fmtDur(NOW - d);
 const fmtPct = p => p >= 10 ? Math.round(p) + " %" : p >= 1 ? p.toFixed(1).replace(".", ",") + " %" : p > 0 ? "< 1 %" : "0 %";
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const color = shop => `var(--${shop === "eggs" ? "eggs" : "seed"})`;
 const overlap = (a0, a1, b0, b1) => Math.max(0, Math.min(a1, b1) - Math.max(a0, b0));
 // rareté d'après la chance d'apparaître à chaque restock
@@ -396,40 +300,9 @@ fetch(STATUS_URL + "/json?poll=1&since=12h", { cache: "no-store" })
 setInterval(() => { load(); render(); }, 30e3);  // passe à « inactif » sans recharger si le bot ne donne plus signe de vie
 
 // ---------- Page admin : ajouter à la main une apparition vue quand le bot était arrêté ----------
-// L'accès repose sur une clé GitHub que seul le propriétaire possède : sans elle, impossible d'écrire dans le dépôt.
-// La clé et l'URL du webhook Discord restent dans CE navigateur (localStorage), jamais dans le site publié.
-const REPO = "Sizein1/shop-bot-stats";
-const store = {
-  get: k => { try { return localStorage.getItem(k); } catch { return null; } },
-  set: (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch {} },
-};
+// (connexion et écriture sur GitHub : commun.js)
 const localISO = d => new Date(d - d.getTimezoneOffset() * 60e3).toISOString().slice(0, 19);
-const b64enc = s => btoa(Array.from(new TextEncoder().encode(s), c => String.fromCharCode(c)).join(""));
-const b64dec = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g, "")), c => c.charCodeAt(0)));
-
-async function gh(path, opts = {}) {
-  const r = await fetch(`https://api.github.com/repos/${REPO}${path}`, { cache: "no-store", ...opts,
-    headers: { Authorization: "Bearer " + store.get("gh_token"), Accept: "application/vnd.github+json" } });
-  if (!r.ok) throw Object.assign(new Error(r.status === 401 ? "clé GitHub refusée ou expirée"
-    : r.status === 403 || r.status === 404 ? "cette clé n'a pas le droit de modifier shop-bot-stats" : `GitHub a répondu ${r.status}`), { status: r.status });
-  return r.json();
-}
-
-// relit manuel.js sur GitHub, applique le changement et le réenregistre
-async function editManual(change) {
-  for (let attempt = 0; ; attempt++) {
-    const f = await gh("/contents/manuel.js");
-    const text = b64dec(f.content);
-    const rows = JSON.parse(text.slice(text.indexOf("["), text.lastIndexOf("]") + 1));
-    change(rows);
-    try {
-      await gh("/contents/manuel.js", { method: "PUT", body: JSON.stringify({ message: "Page admin : ajouts manuels",
-        content: b64enc("window.MANUAL = " + JSON.stringify(rows) + ";\n"), sha: f.sha }) });
-      window.MANUAL = rows;
-      return;
-    } catch (e) { if (![409, 422].includes(e.status) || attempt) throw e; }  // le bot a envoyé au même moment : on relit et on recommence
-  }
-}
+const editManual = change => editDataFile("manuel.js", "MANUAL", change, "Page admin : ajouts manuels");
 
 const dlg = document.getElementById("admin"), adminBody = document.getElementById("adminBody");
 let pick = null;
@@ -445,12 +318,7 @@ function drawLogin(msg = "") {
     <label>Webhook Discord (pour les notifs)<input type="password" id="hookIn" autocomplete="off" placeholder="https://discord.com/api/webhooks/…"></label>
     <div class="act"><button id="loginBtn">Se connecter</button><button class="gray" id="closeBtn">Fermer</button></div>
     <div class="msg" id="adminMsg" role="status">${msg}</div>
-    <details><summary>Comment créer ma clé GitHub ?</summary><ol>
-      <li>Sur github.com : ta photo de profil → <b>Settings</b> → <b>Developer settings</b> → <b>Personal access tokens</b> → <b>Fine-grained tokens</b> → <b>Generate new token</b>.</li>
-      <li>Nom : « Stats Shop admin », expiration au choix.</li>
-      <li><b>Repository access</b> : <i>Only select repositories</i> → <b>shop-bot-stats</b>.</li>
-      <li><b>Permissions</b> → <b>Contents</b> : <i>Read and write</i>. Rien d'autre.</li>
-      <li><b>Generate token</b>, copie la clé et colle-la ici.</li></ol></details>`;
+    ${TOKEN_HELP}`;
 }
 
 function drawAdmin(msg = "") {

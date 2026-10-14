@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shop Bot · Index des plantes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  /* couleur de chaque rareté (comme le titre des cartes dans le jeu) */
+  .ra-Common { --ra: #c9c9c9; } .ra-Uncommon { --ra: #4fdc4f; } .ra-Rare { --ra: #3fa2ff; } .ra-Epic { --ra: #b05cff; }
+  .ra-Legendary { --ra: #ffb52e; } .ra-Mythic { --ra: #ff5a2e; } .ra-Secret { --ra: #ffffff; } .ra-Void { --ra: #8b4dff; }
+  .rar button { position: relative; padding-left: 26px; }
+  .rar button::before { content: ""; position: absolute; left: 9px; top: 50%; width: 10px; height: 10px; margin-top: -6px;
+                        border-radius: 50%; border: 2px solid #000; background: var(--ra, #fff); }
+  .rar button[data-v="all"]::before { background: var(--rainbow); }
+  .rar button small { font-size: 12px; opacity: .85; }
+  .tools { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin: -6px 0 16px; }
+  .tools input[type=search] { font: 600 15px "Fredoka", "Segoe UI", sans-serif; color: #fff; background: var(--row); border: 3px solid #000;
+                              border-radius: 10px; padding: 7px 12px; min-width: 220px; flex: 1; max-width: 340px; }
+  .tools label.check { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .plant { display: flex; flex-direction: column; gap: 6px; }
+  .plant img { width: 100%; height: auto; aspect-ratio: 1; display: block; border-radius: 12px; border: 3px solid #000; background: var(--row);
+               box-shadow: 0 4px 0 #000; }
+  .plant .rn { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--ra); text-shadow: var(--stroke-sm); }
+  .plant .rn::before { content: ""; width: 9px; height: 9px; border-radius: 50%; border: 2px solid #000; background: var(--ra); flex: none; }
+  .plant .rn span { color: #fff; margin-left: auto; font-weight: 600; opacity: .8; }
+  .plant .found { font-size: 13px; font-weight: 700; text-shadow: var(--stroke-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .plant .inc { font-size: 17px; font-weight: 700; color: var(--money); text-shadow: var(--stroke-sm); font-variant-numeric: tabular-nums; }
+  .plant .inc.none { color: var(--muted); font-size: 14px; text-shadow: none; }
+  .plant input { width: 100%; font: 600 14px "Fredoka", "Segoe UI", sans-serif; color: #fff; background: var(--row);
+                 border: 2px solid #000; border-radius: 8px; padding: 5px 8px; }
+  .plant input.changed { border-color: var(--money); }
+  .plant input.bad { border-color: #ff4b45; }
+  .count { color: var(--muted); font-weight: 600; margin: 0 0 10px; }
+  .savebar { position: sticky; bottom: 12px; margin-top: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+             background: var(--panel-2); border: 3px solid #000; border-radius: 14px; padding: 10px 14px; box-shadow: 0 6px 0 #000; }
+  .savebar[hidden] { display: none; }
+  .savebar .msg { flex: 1; }
+</style>
+</head>
+<body>
+<main>
+  <nav class="tabs"><a href="./">📊 Stats</a><a href="plantes.html" aria-current="page">🌱 Index</a></nav>
+  <header class="banner">
+    <h1 class="stroke">🌱 Index des plantes</h1>
+    <p class="sub" id="sub"></p>
+  </header>
+
+  <div class="frame"><div class="inner">
+    <div class="filters">
+      <div class="seg rar" id="rarSeg" role="group" aria-label="Rareté"></div>
+    </div>
+    <div class="tools">
+      <div class="seg" id="sortSeg" role="group" aria-label="Trier par">
+        <button data-v="index" aria-pressed="true">Ordre du jeu</button>
+        <button data-v="income" aria-pressed="false">💰 Revenu</button>
+        <button data-v="name" aria-pressed="false">A → Z</button>
+      </div>
+      <input type="search" id="search" placeholder="Chercher une plante…" aria-label="Chercher une plante">
+      <label class="check"><input type="checkbox" id="hideUnknown"> Cacher les ???</label>
+      <div class="seg admin-open"><button id="adminBtn" aria-haspopup="dialog">🔒 Admin</button></div>
+    </div>
+    <p class="count" id="count"></p>
+    <div class="grid" id="grid"></div>
+    <div class="savebar" id="savebar" hidden>
+      <div class="msg" id="saveMsg" role="status"></div>
+      <div class="act"><button id="saveBtn">💾 Enregistrer</button><button class="gray" id="quitEdit">Quitter l'édition</button></div>
+    </div>
+  </div></div>
+</main>
+<dialog id="admin" aria-labelledby="adminTitle"><div id="adminBody"></div></dialog>
+
+<script src="commun.js"></script>
+<script src="plantes.js"></script>
+<script>
+const RARITIES = ["Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Secret", "Void"];
+const state = { rarity: "all", sort: "index", q: "", hideUnknown: false, edit: false };
+let edits = {};  // modifications pas encore enregistrées : { id: { income?, name? } }
+
+// --- revenus : « 1.5K », « 2M », « 3,2 B »… ↔ nombre par seconde ---
+const UNITS = [["Sx", 1e21], ["Qi", 1e18], ["Qa", 1e15], ["T", 1e12], ["B", 1e9], ["M", 1e6], ["K", 1e3]];
+function parseIncome(s) {
+  const m = String(s).trim().replace(/\s/g, "").replace(",", ".").replace(/^\$/, "").replace(/\/s$/i, "")
+    .match(/^(\d+(?:\.\d+)?)(k|m|b|t|qa|qi|sx)?$/i);
+  if (!m) return null;
+  const unit = m[2] ? UNITS.find(([u]) => u.toLowerCase() === m[2].toLowerCase())[1] : 1;
+  return Math.round(Number(m[1]) * unit * 100) / 100;
+}
+function fmtIncome(n) {
+  const [u, v] = UNITS.find(([, v]) => n >= v) || ["", 1];
+  return "$" + (n / v).toLocaleString("en-US", { maximumFractionDigits: n / v < 10 ? 2 : 1 }) + u;
+}
+console.assert(parseIncome("1.5K") === 1500 && parseIncome("$2,5 m/s") === 2.5e6 && parseIncome("abc") === null && fmtIncome(1500) === "$1.5K");
+
+const data = () => window.PLANT_DATA || {};
+const nameOf = p => (data()[p.id] && data()[p.id].name) || p.name;
+const incomeOf = p => data()[p.id] && data()[p.id].income;
+
+function render() {
+  const plants = window.PLANTS || [];
+  const known = plants.filter(p => nameOf(p) !== "???").length, withIncome = plants.filter(incomeOf).length;
+  document.getElementById("sub").textContent = `${known} / ${plants.length} découvertes · ${withIncome} revenus renseignés`;
+
+  document.getElementById("rarSeg").innerHTML = [["all", "Toutes", plants.length], ...RARITIES.map(r => [r, r, plants.filter(p => p.rarity === r).length])]
+    .map(([v, label, n]) => `<button data-v="${v}" class="ra-${v}" aria-pressed="${state.rarity === v}">${label} <small>${n}</small></button>`).join("");
+
+  const q = state.q.toLowerCase();
+  let list = plants.filter(p => (state.rarity === "all" || p.rarity === state.rarity)
+    && (!state.hideUnknown || nameOf(p) !== "???") && (!q || nameOf(p).toLowerCase().includes(q)));
+  if (state.sort === "income") list = [...list].sort((a, b) => (incomeOf(b) || -1) - (incomeOf(a) || -1) || a.id - b.id);
+  if (state.sort === "name") list = [...list].sort((a, b) => (nameOf(a) === "???") - (nameOf(b) === "???") || nameOf(a).localeCompare(nameOf(b)));
+  document.getElementById("count").textContent = `${list.length} plante${list.length > 1 ? "s" : ""}`;
+
+  document.getElementById("grid").innerHTML = list.map(p => {
+    const name = nameOf(p), inc = incomeOf(p), e = edits[p.id] || {};
+    const renamed = p.name === "???" && name !== "???";  // découverte depuis la capture : l'image montre encore « ??? »
+    return `<div class="box plant ra-${p.rarity}">
+      <img src="plantes/${String(p.id).padStart(3, "0")}.webp" alt="${esc(name)} (${p.rarity})" loading="lazy" width="256" height="256">
+      <div class="rn">${p.rarity}<span>n° ${p.id}</span></div>
+      ${renamed ? `<div class="found">${esc(name)}</div>` : ""}
+      ${state.edit ? `
+        ${p.name === "???" ? `<input data-id="${p.id}" data-f="name" placeholder="Nom une fois découverte" value="${esc(e.name ?? (renamed ? name : ""))}"
+          class="${e.name !== undefined ? "changed" : ""}" aria-label="Nom de la plante n° ${p.id}">` : ""}
+        <input data-id="${p.id}" data-f="income" placeholder="Revenu/s (ex : 1.5K)" inputmode="decimal"
+          value="${esc(e.income ?? (inc ? fmtIncome(inc).slice(1) : ""))}" class="${e.income !== undefined ? (parseIncome(e.income) === null && e.income !== "" ? "bad" : "changed") : ""}"
+          aria-label="Revenu par seconde de ${esc(name)}">`
+      : `<div class="inc${inc ? "" : " none"}">${inc ? "💰 " + fmtIncome(inc) + "/s" : "Revenu inconnu"}</div>`}
+    </div>`;
+  }).join("") || `<p class="hint">Aucune plante ne correspond.</p>`;
+
+  const n = Object.keys(edits).length;
+  document.getElementById("savebar").hidden = !state.edit;
+  document.getElementById("saveBtn").disabled = !n;
+  if (state.edit && !document.getElementById("saveMsg").dataset.keep)
+    document.getElementById("saveMsg").textContent = n ? `${n} plante${n > 1 ? "s" : ""} modifiée${n > 1 ? "s" : ""}, pas encore enregistrée${n > 1 ? "s" : ""}` : "Tape les revenus de base (ex : 250, 1.5K, 2M), puis Enregistrer.";
+}
+
+for (const [id, key] of [["rarSeg", "rarity"], ["sortSeg", "sort"]]) {
+  document.getElementById(id).addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    state[key] = b.dataset.v;
+    document.querySelectorAll(`#${id} button`).forEach(x => x.setAttribute("aria-pressed", x === b));
+    render();
+  });
+}
+document.getElementById("search").addEventListener("input", e => { state.q = e.target.value.trim(); render(); });
+document.getElementById("hideUnknown").addEventListener("change", e => { state.hideUnknown = e.target.checked; render(); });
+
+// saisie en mode édition : on garde la modification sans redessiner (le curseur reste dans le champ)
+document.getElementById("grid").addEventListener("input", e => {
+  const i = e.target.closest("input[data-id]"); if (!i) return;
+  const id = i.dataset.id, f = i.dataset.f, v = i.value.trim();
+  const p = window.PLANTS[id - 1], cur = f === "name" ? (nameOf(p) === "???" ? "" : nameOf(p)) : (incomeOf(p) ? fmtIncome(incomeOf(p)).slice(1) : "");
+  edits[id] = { ...edits[id], [f]: v };
+  if (v === cur) delete edits[id][f];
+  if (!Object.keys(edits[id]).length) delete edits[id];
+  i.className = v === cur ? "" : f === "income" && v && parseIncome(v) === null ? "bad" : "changed";
+  document.getElementById("saveMsg").dataset.keep = "";
+  const n = Object.keys(edits).length;
+  document.getElementById("saveBtn").disabled = !n;
+  document.getElementById("saveMsg").textContent = n ? `${n} plante${n > 1 ? "s" : ""} modifiée${n > 1 ? "s" : ""}, pas encore enregistrée${n > 1 ? "s" : ""}` : "";
+});
+
+const saveMsg = html => { const m = document.getElementById("saveMsg"); m.innerHTML = html; m.dataset.keep = "1"; };
+document.getElementById("saveBtn").onclick = async () => {
+  const bad = Object.entries(edits).filter(([, e]) => e.income && parseIncome(e.income) === null);
+  if (bad.length) return saveMsg(`<span class="err">Revenu illisible pour ${bad.map(([id]) => esc(nameOf(window.PLANTS[id - 1]))).join(", ")} : écris par exemple 250, 1.5K ou 2M.</span>`);
+  const btn = document.getElementById("saveBtn"); btn.disabled = true; saveMsg("Enregistrement…");
+  try {
+    await editDataFile("plantes_admin.js", "PLANT_DATA", d => {
+      for (const [id, e] of Object.entries(edits)) {
+        const row = { ...d[id] };
+        if (e.income) row.income = parseIncome(e.income); else if (e.income === "") delete row.income;
+        if (e.name) row.name = e.name; else if (e.name === "") delete row.name;
+        Object.keys(row).length ? d[id] = row : delete d[id];
+      }
+    }, "Index : revenus et noms");
+    const n = Object.keys(edits).length; edits = {};
+    render(); saveMsg(`<span class="ok">✅ ${n} plante${n > 1 ? "s" : ""} enregistrée${n > 1 ? "s" : ""} (visible par tous dans 1 à 2 min)</span>`);
+  } catch (err) { btn.disabled = false; saveMsg(`<span class="err">❌ Pas enregistré : ${esc(err.message)}</span>`); }
+};
+document.getElementById("quitEdit").onclick = () => {
+  if (Object.keys(edits).length && !confirm("Quitter sans enregistrer les modifications ?")) return;
+  edits = {}; state.edit = false; document.getElementById("adminBtn").textContent = "🔒 Admin"; render();
+};
+
+// --- connexion admin (même clé GitHub que la page Stats) ---
+const dlg = document.getElementById("admin"), adminBody = document.getElementById("adminBody");
+dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+function startEdit() {
+  state.edit = true; document.getElementById("adminBtn").textContent = "✏️ Édition";
+  document.getElementById("saveMsg").dataset.keep = ""; render();
+}
+document.getElementById("adminBtn").onclick = () => {
+  if (state.edit) return;
+  if (store.get("gh_token")) return startEdit();
+  adminBody.innerHTML = `
+    <h2 id="adminTitle">🔒 Admin</h2>
+    <p class="hint" style="margin:0">Réservé au propriétaire : il faut ta clé GitHub (la même que pour la page Stats). Elle reste dans ce navigateur et n'est jamais publiée.</p>
+    <label>Clé GitHub<input type="password" id="tokIn" autocomplete="off" placeholder="github_pat_…"></label>
+    <div class="act"><button id="loginBtn">Se connecter</button><button class="gray" id="closeBtn">Fermer</button></div>
+    <div class="msg" id="adminMsg" role="status"></div>
+    ${TOKEN_HELP}`;
+  dlg.showModal();
+};
+adminBody.onclick = async e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.id === "closeBtn") return dlg.close();
+  if (b.id !== "loginBtn") return;
+  const tok = document.getElementById("tokIn").value.trim(), msg = document.getElementById("adminMsg");
+  if (!tok) return msg.innerHTML = '<span class="err">Colle ta clé GitHub.</span>';
+  b.disabled = true; msg.textContent = "Vérification…";
+  store.set("gh_token", tok);
+  try { await gh("/contents/plantes_admin.js"); }
+  catch (err) { store.set("gh_token", null); b.disabled = false; return msg.innerHTML = `<span class="err">❌ ${esc(err.message)}</span>`; }
+  dlg.close(); startEdit();
+};
+
+// revenus et noms découverts : toujours la version fraîche (le navigateur garde sinon une copie 10 min)
+function refreshData() {
+  return new Promise(done => {
+    const s = document.createElement("script");
+    s.src = "plantes_admin.js?t=" + Date.now();
+    s.onload = s.onerror = () => { s.remove(); done(); };
+    document.body.appendChild(s);
+  }).then(() => { if (!Object.keys(edits).length) render(); });
+}
+setInterval(refreshData, 60e3);
+render();
+refreshData();
+</script>
+</body>
+</html>

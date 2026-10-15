@@ -106,3 +106,35 @@ details ol { margin: 8px 0 0; padding-left: 20px; font-size: 14px; color: var(--
           background: linear-gradient(#e6e6e6, #a9a9a9); box-shadow: inset 0 -4px 0 var(--gray-dk), 0 4px 0 #000; }
 .tabs a[aria-current="page"] { background: linear-gradient(#69e66b, #36bd38); box-shadow: inset 0 -4px 0 var(--green-dk), 0 4px 0 #000; }
 .tabs a:hover { filter: brightness(1.08); }
+
+/* pages Index et Pets : raretés, filtres, grille de cartes (classe .plant = une carte, plante ou pet), mode édition */
+/* couleur de chaque rareté (comme le titre des cartes dans le jeu) */
+.ra-Common { --ra: #c9c9c9; } .ra-Uncommon { --ra: #4fdc4f; } .ra-Rare { --ra: #3fa2ff; } .ra-Epic { --ra: #b05cff; }
+.ra-Legendary { --ra: #ffb52e; } .ra-Mythic { --ra: #ff5a2e; } .ra-Secret { --ra: #ffffff; } .ra-Void { --ra: #8b4dff; }
+.rar button { position: relative; padding-left: 26px; }
+.rar button::before { content: ""; position: absolute; left: 9px; top: 50%; width: 10px; height: 10px; margin-top: -6px;
+                      border-radius: 50%; border: 2px solid #000; background: var(--ra, #fff); }
+.rar button[data-v="all"]::before { background: var(--rainbow); }
+.rar button small { font-size: 12px; opacity: .85; }
+.tools { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin: -6px 0 16px; }
+.tools input[type=search] { font: 600 15px "Fredoka", "Segoe UI", sans-serif; color: #fff; background: var(--row); border: 3px solid #000;
+                            border-radius: 10px; padding: 7px 12px; min-width: 220px; flex: 1; max-width: 340px; }
+.tools label.check { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.plant { display: flex; flex-direction: column; gap: 6px; }
+.plant img { width: 100%; height: auto; aspect-ratio: 1; display: block; border-radius: 12px; border: 3px solid #000; background: var(--row);
+             box-shadow: 0 4px 0 #000; }
+.plant .rn { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--ra); text-shadow: var(--stroke-sm); }
+.plant .rn::before { content: ""; width: 9px; height: 9px; border-radius: 50%; border: 2px solid #000; background: var(--ra); flex: none; }
+.plant .rn span { color: #fff; margin-left: auto; font-weight: 600; opacity: .8; }
+.plant .found { font-size: 13px; font-weight: 700; text-shadow: var(--stroke-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plant input { width: 100%; font: 600 14px "Fredoka", "Segoe UI", sans-serif; color: #fff; background: var(--row);
+               border: 2px solid #000; border-radius: 8px; padding: 5px 8px; }
+.plant input.changed { border-color: var(--money); }
+.plant input.bad { border-color: #ff4b45; }
+.count { color: var(--muted); font-weight: 600; margin: 0 0 10px; }
+.savebar { position: sticky; bottom: 12px; margin-top: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+           background: var(--panel-2); border: 3px solid #000; border-radius: 14px; padding: 10px 14px; box-shadow: 0 6px 0 #000; }
+.savebar[hidden] { display: none; }
+.savebar .msg { flex: 1; }

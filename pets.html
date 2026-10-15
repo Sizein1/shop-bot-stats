@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shop Bot · Pets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+  .skills { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .skills li { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; background: var(--row);
+               border: 2px solid #000; border-radius: 8px; padding: 3px 8px; }
+  .skills li b { font-weight: 600; flex: 1; }
+  .skills li .val { color: var(--money); font-weight: 700; text-shadow: var(--stroke-sm); font-variant-numeric: tabular-nums; }
+  .skills.none { color: var(--muted); font-size: 14px; }
+  .tools select, .skill-row select { font: 600 14px "Fredoka", "Segoe UI", sans-serif; color: #fff; background: var(--row);
+                                     border: 3px solid #000; border-radius: 10px; padding: 6px 8px; }
+  .skill-row { display: grid; grid-template-columns: 52px 1fr; gap: 4px; padding-top: 6px; border-top: 2px dashed var(--line); }
+  .skill-row select { border-width: 2px; border-radius: 8px; padding: 4px 4px; font-size: 13px; min-width: 0; }
+  .skill-row select:first-child { grid-column: 1 / -1; }  /* nom de la compétence en entier, + / × et valeur dessous */
+  .skill-row input { padding: 4px 6px; }
+  .skill-row.changed select, .skill-row.changed input { border-color: var(--money); }
+  .skill-row.bad input { border-color: #ff4b45; }
+</style>
+</head>
+<body>
+<main>
+  <nav class="tabs"><a href="./">📊 Stats</a><a href="plantes.html">🌱 Index</a><a href="pets.html" aria-current="page">🐾 Pets</a></nav>
+  <header class="banner">
+    <h1 class="stroke">🐾 Pets</h1>
+    <p class="sub" id="sub"></p>
+  </header>
+
+  <div class="frame"><div class="inner">
+    <div class="filters">
+      <div class="seg rar" id="rarSeg" role="group" aria-label="Rareté"></div>
+    </div>
+    <div class="tools">
+      <div class="seg" id="sortSeg" role="group" aria-label="Trier par">
+        <button data-v="index" aria-pressed="true">Ordre du jeu</button>
+        <button data-v="name" aria-pressed="false">A → Z</button>
+      </div>
+      <select id="skillFilter" aria-label="Filtrer par compétence"></select>
+      <input type="search" id="search" placeholder="Chercher un pet…" aria-label="Chercher un pet">
+      <label class="check"><input type="checkbox" id="hideUnknown"> Cacher les ???</label>
+      <div class="seg admin-open"><button id="adminBtn" aria-haspopup="dialog">🔒 Admin</button></div>
+    </div>
+    <p class="count" id="count"></p>
+    <div class="grid" id="grid"></div>
+    <div class="savebar" id="savebar" hidden>
+      <div class="msg" id="saveMsg" role="status"></div>
+      <div class="act"><button id="saveBtn">💾 Enregistrer</button><button class="gray" id="quitEdit">Quitter l'édition</button></div>
+    </div>
+  </div></div>
+</main>
+<dialog id="admin" aria-labelledby="adminTitle"><div id="adminBody"></div></dialog>
+
+<script src="commun.js"></script>
+<script src="pets.js"></script>
+<script>
+const RARITIES = ["Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Secret"];
+// compétences du jeu (les mêmes pour tout le monde) et leur icône
+const SKILLS = { "Watering": "💧", "Money": "💰", "Boost Money Offline": "🌙", "Grow Speed": "🌱", "Friend Boost": "🤝",
+  "Tricky Visitors": "🃏", "Big Plant Luck": "🍀", "Seed Stock": "📦", "Deal Value": "🏷️", "Pack Luck": "🎁", "Egg Stock": "🥚",
+  "Double Seed Pack": "✌️", "Rich Visitor": "🤑", "Visitors": "👥", "Lucky Hatch": "🐣", "Free restock": "🔄" };
+const MAX_SKILLS = 3;
+const state = { rarity: "all", sort: "index", q: "", skill: "", hideUnknown: false, edit: false };
+let edits = {};  // modifications pas encore enregistrées : { id: { skills?: [...], name? } }
+
+const data = () => window.PET_DATA || {};
+const nameOf = p => (data()[p.id] && data()[p.id].name) || p.name;
+const skillsOf = p => (data()[p.id] && data()[p.id].skills) || [];
+// valeur d'un bonus : nombre, éventuellement à virgule ou en % (ex : 5, 1.5, 2,5, 10%)
+const validValue = v => /^\d+(?:[.,]\d+)?%?$/.test(v);
+const fmtSkill = k => `${k.op === "x" ? "×" : "+"}${k.v}`;
+console.assert(validValue("1.5") && validValue("10%") && validValue("2,5") && !validValue("abc") && !validValue(""));
+
+function skillRows(p) {
+  const list = edits[p.id] && edits[p.id].skills ? edits[p.id].skills : skillsOf(p);
+  const changed = !!(edits[p.id] && edits[p.id].skills);
+  return Array.from({ length: MAX_SKILLS }, (_, i) => {
+    const k = list[i] || { s: "", op: "+", v: "" };
+    const bad = k.s && !validValue(k.v);
+    return `<div class="skill-row${changed ? " changed" : ""}${bad ? " bad" : ""}" data-id="${p.id}">
+      <select aria-label="Compétence ${i + 1} de ${esc(nameOf(p))}"><option value="">— compétence ${i + 1} —</option>${Object.keys(SKILLS).map(s =>
+        `<option${s === k.s ? " selected" : ""}>${s}</option>`).join("")}</select>
+      <select aria-label="Type de bonus"><option value="+"${k.op === "+" ? " selected" : ""}>+</option><option value="x"${k.op === "x" ? " selected" : ""}>×</option></select>
+      <input value="${esc(k.v)}" placeholder="X" inputmode="decimal" aria-label="Valeur du bonus"></div>`;
+  }).join("");
+}
+
+function render() {
+  const pets = window.PETS || [];
+  const known = pets.filter(p => nameOf(p) !== "???").length, filled = pets.filter(p => skillsOf(p).length).length;
+  document.getElementById("sub").textContent = `${known} / ${pets.length} découverts · ${filled} avec leurs compétences`;
+
+  document.getElementById("rarSeg").innerHTML = [["all", "Tous", pets.length], ...RARITIES.map(r => [r, r, pets.filter(p => p.rarity === r).length])]
+    .map(([v, label, n]) => `<button data-v="${v}" class="ra-${v}" aria-pressed="${state.rarity === v}">${label} <small>${n}</small></button>`).join("");
+  const sf = document.getElementById("skillFilter");
+  if (!sf.options.length) sf.innerHTML = `<option value="">Toutes les compétences</option>` +
+    Object.entries(SKILLS).map(([s, ico]) => `<option value="${s}">${ico} ${s}</option>`).join("");
+
+  const q = state.q.toLowerCase();
+  let list = pets.filter(p => (state.rarity === "all" || p.rarity === state.rarity)
+    && (!state.hideUnknown || nameOf(p) !== "???") && (!q || nameOf(p).toLowerCase().includes(q))
+    && (!state.skill || skillsOf(p).some(k => k.s === state.skill)));
+  if (state.sort === "name") list = [...list].sort((a, b) => (nameOf(a) === "???") - (nameOf(b) === "???") || nameOf(a).localeCompare(nameOf(b)));
+  document.getElementById("count").textContent = `${list.length} pet${list.length > 1 ? "s" : ""}`;
+
+  document.getElementById("grid").innerHTML = list.map(p => {
+    const name = nameOf(p), skills = skillsOf(p), e = edits[p.id] || {};
+    const renamed = p.name === "???" && name !== "???";  // découvert : l'image montre encore « ??? »
+    return `<div class="box plant ra-${p.rarity}">
+      <img src="pets/${String(p.id).padStart(3, "0")}.webp" alt="${esc(name)} (${p.rarity})" loading="lazy" width="256" height="256">
+      <div class="rn">${p.rarity}<span>n° ${p.id}</span></div>
+      ${renamed ? `<div class="found">${esc(name)}</div>` : ""}
+      ${state.edit ? `
+        ${p.name === "???" ? `<input data-id="${p.id}" data-f="name" placeholder="Nom une fois découvert" value="${esc(e.name ?? (renamed ? name : ""))}"
+          class="${e.name !== undefined ? "changed" : ""}" aria-label="Nom du pet n° ${p.id}">` : ""}
+        ${skillRows(p)}`
+      : skills.length ? `<ul class="skills">${skills.map(k => `<li>${SKILLS[k.s] || "✨"} <b>${esc(k.s)}</b><span class="val">${esc(fmtSkill(k))}</span></li>`).join("")}</ul>`
+      : `<div class="skills none">Compétences inconnues</div>`}
+    </div>`;
+  }).join("") || `<p class="hint">Aucun pet ne correspond.</p>`;
+
+  document.getElementById("savebar").hidden = !state.edit;
+  updateSaveMsg();
+}
+
+function updateSaveMsg(keep) {
+  const n = Object.keys(edits).length, m = document.getElementById("saveMsg");
+  document.getElementById("saveBtn").disabled = !n;
+  if (m.dataset.keep && !keep) return;
+  m.textContent = n ? `${n} pet${n > 1 ? "s" : ""} modifié${n > 1 ? "s" : ""}, pas encore enregistré${n > 1 ? "s" : ""}`
+    : "Choisis jusqu'à 3 compétences par pet, le type (+ ou ×) et la valeur, puis Enregistrer.";
+}
+
+for (const [id, key] of [["rarSeg", "rarity"], ["sortSeg", "sort"]]) {
+  document.getElementById(id).addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    state[key] = b.dataset.v;
+    document.querySelectorAll(`#${id} button`).forEach(x => x.setAttribute("aria-pressed", x === b));
+    render();
+  });
+}
+document.getElementById("skillFilter").addEventListener("change", e => { state.skill = e.target.value; render(); });
+document.getElementById("search").addEventListener("input", e => { state.q = e.target.value.trim(); render(); });
+document.getElementById("hideUnknown").addEventListener("change", e => { state.hideUnknown = e.target.checked; render(); });
+
+// saisie en mode édition : on mémorise sans redessiner la grille (le curseur reste dans le champ)
+function onEdit(e) {
+  const card = e.target.closest(".plant"); if (!card || !state.edit) return;
+  const nameIn = e.target.closest('input[data-f="name"]');
+  if (nameIn) {
+    const id = nameIn.dataset.id, p = window.PETS[id - 1], v = nameIn.value.trim(), cur = nameOf(p) === "???" ? "" : nameOf(p);
+    edits[id] = { ...edits[id], name: v };
+    if (v === cur) delete edits[id].name;
+    nameIn.className = v === cur ? "" : "changed";
+  } else {
+    const rows = [...card.querySelectorAll(".skill-row")]; if (!rows.length) return;
+    const id = rows[0].dataset.id, p = window.PETS[id - 1];
+    const skills = rows.map(r => { const [s, op] = r.querySelectorAll("select"); return { s: s.value, op: op.value, v: r.querySelector("input").value.trim() }; })
+      .filter(k => k.s);
+    const same = JSON.stringify(skills) === JSON.stringify(skillsOf(p));
+    edits[id] = { ...edits[id], skills };
+    if (same) delete edits[id].skills;
+    rows.forEach(r => {
+      const s = r.querySelector("select").value, v = r.querySelector("input").value.trim();
+      r.className = "skill-row" + (same ? "" : " changed") + (s && !validValue(v) ? " bad" : "");
+    });
+  }
+  if (!Object.keys(edits[card.querySelector("[data-id]").dataset.id]).length) delete edits[card.querySelector("[data-id]").dataset.id];
+  document.getElementById("saveMsg").dataset.keep = "";
+  updateSaveMsg();
+}
+document.getElementById("grid").addEventListener("input", onEdit);
+document.getElementById("grid").addEventListener("change", onEdit);
+
+const saveMsg = html => { const m = document.getElementById("saveMsg"); m.innerHTML = html; m.dataset.keep = "1"; };
+document.getElementById("saveBtn").onclick = async () => {
+  const bad = Object.entries(edits).filter(([, e]) => e.skills && e.skills.some(k => !validValue(k.v)));
+  if (bad.length) return saveMsg(`<span class="err">Valeur manquante ou illisible pour ${bad.map(([id]) => esc(nameOf(window.PETS[id - 1]))).join(", ")} : écris un nombre, par exemple 5, 1.5 ou 10%.</span>`);
+  const btn = document.getElementById("saveBtn"); btn.disabled = true; saveMsg("Enregistrement…");
+  try {
+    await editDataFile("pets_admin.js", "PET_DATA", d => {
+      for (const [id, e] of Object.entries(edits)) {
+        const row = { ...d[id] };
+        if (e.skills) { if (e.skills.length) row.skills = e.skills; else delete row.skills; }
+        if (e.name) row.name = e.name; else if (e.name === "") delete row.name;
+        Object.keys(row).length ? d[id] = row : delete d[id];
+      }
+    }, "Pets : compétences et noms");
+    const n = Object.keys(edits).length; edits = {};
+    render(); saveMsg(`<span class="ok">✅ ${n} pet${n > 1 ? "s" : ""} enregistré${n > 1 ? "s" : ""} (visible par tous dans 1 à 2 min)</span>`);
+  } catch (err) { btn.disabled = false; saveMsg(`<span class="err">❌ Pas enregistré : ${esc(err.message)}</span>`); }
+};
+document.getElementById("quitEdit").onclick = () => {
+  if (Object.keys(edits).length && !confirm("Quitter sans enregistrer les modifications ?")) return;
+  edits = {}; state.edit = false; document.getElementById("adminBtn").textContent = "🔒 Admin"; render();
+};
+
+// --- connexion admin (même clé GitHub que les autres pages) ---
+const dlg = document.getElementById("admin"), adminBody = document.getElementById("adminBody");
+dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+function startEdit() {
+  state.edit = true; document.getElementById("adminBtn").textContent = "✏️ Édition";
+  document.getElementById("saveMsg").dataset.keep = ""; render();
+}
+document.getElementById("adminBtn").onclick = () => {
+  if (state.edit) return;
+  if (store.get("gh_token")) return startEdit();
+  adminBody.innerHTML = `
+    <h2 id="adminTitle">🔒 Admin</h2>
+    <p class="hint" style="margin:0">Réservé au propriétaire : il faut ta clé GitHub (la même que pour les autres pages). Elle reste dans ce navigateur et n'est jamais publiée.</p>
+    <label>Clé GitHub<input type="password" id="tokIn" autocomplete="off" placeholder="github_pat_…"></label>
+    <div class="act"><button id="loginBtn">Se connecter</button><button class="gray" id="closeBtn">Fermer</button></div>
+    <div class="msg" id="adminMsg" role="status"></div>
+    ${TOKEN_HELP}`;
+  dlg.showModal();
+};
+adminBody.onclick = async e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.id === "closeBtn") return dlg.close();
+  if (b.id !== "loginBtn") return;
+  const tok = document.getElementById("tokIn").value.trim(), msg = document.getElementById("adminMsg");
+  if (!tok) return msg.innerHTML = '<span class="err">Colle ta clé GitHub.</span>';
+  b.disabled = true; msg.textContent = "Vérification…";
+  store.set("gh_token", tok);
+  try { await gh("/contents/pets_admin.js"); }
+  catch (err) { store.set("gh_token", null); b.disabled = false; return msg.innerHTML = `<span class="err">❌ ${esc(err.message)}</span>`; }
+  dlg.close(); startEdit();
+};
+
+// compétences et noms découverts : toujours la version fraîche (le navigateur garde sinon une copie 10 min)
+function refreshData() {
+  return new Promise(done => {
+    const s = document.createElement("script");
+    s.src = "pets_admin.js?t=" + Date.now();
+    s.onload = s.onerror = () => { s.remove(); done(); };
+    document.body.appendChild(s);
+  }).then(() => { if (!Object.keys(edits).length) render(); });
+}
+setInterval(refreshData, 60e3);
+render();
+refreshData();
+</script>
+</body>
+</html>

@@ -47,6 +47,8 @@
   .recent li { padding: 6px 10px; margin-bottom: 6px; break-inside: avoid; background: var(--row); border: 2px solid #000; border-radius: 10px; font-weight: 600; }
   .recent time { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 8px; font-weight: 500; }
   .empty { text-align: center; padding: 48px 16px; font-size: 18px; text-shadow: var(--stroke-sm); }
+  .del-list { max-height: 260px; overflow-y: auto; }
+  .del-list label { cursor: pointer; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -103,8 +105,9 @@ function load() {
   ACTIVE = (live ? live.actif : !!(window.BOT && window.BOT.actif)) && NOW - SEEN < ACTIVE_MAX;
   ITEMS = window.ITEMS || [];
   const hist = [...(window.HISTORY || []), ...(window.MANUAL || [])], known = new Set(hist.map(key));
+  const DELETED = new Set(window.DELETED || []);  // fausses apparitions supprimées depuis la page admin
   EVENTS = [...hist, ...LIVE_STOCK.filter(r => !known.has(key(r)))]  // sans doublon une fois arrivées sur GitHub
-    .filter(r => !REMOVED.has(key(r)))
+    .filter(r => !REMOVED.has(key(r)) && !DELETED.has(key(r)))
     .map(([t, e, shop, name]) => ({ t: new Date(t), e, shop, name })).sort((a, b) => a.t - b.t);
   // Sessions = périodes où le bot tournait (debut → fin). Une session sans « fin » se ferme à son dernier événement ;
   // la dernière va jusqu'à maintenant si le bot est actif, sinon jusqu'à son dernier signal.
@@ -259,7 +262,7 @@ document.addEventListener("mousemove", e => {
 // charge les données à l'ouverture puis chaque minute ; ?t= force la version fraîche
 // (GitHub autorise le navigateur à garder une copie 10 min : sans ça, la page montrerait d'anciennes données)
 function refreshData() {
-  return Promise.all(["historique.js", "manuel.js"].map(file => new Promise(done => {
+  return Promise.all(["historique.js", "manuel.js", "supprimes.js"].map(file => new Promise(done => {
     const s = document.createElement("script");
     s.src = file + "?t=" + Date.now();
     s.onload = s.onerror = () => { s.remove(); done(); };
@@ -324,7 +327,7 @@ function drawLogin(msg = "") {
 function drawAdmin(msg = "") {
   if (!store.get("gh_token")) return drawLogin(msg);
   const hook = store.get("discord_url");
-  const mine = (window.MANUAL || []).filter(r => !REMOVED.has(key(r))).slice(-8).reverse();
+  const recent = EVENTS.filter(x => x.e === "stock" || x.e === "manuel").slice(-200).reverse();
   adminBody.innerHTML = `
     <h2 id="adminTitle">🔓 Admin</h2>
     <div><b>1. Quel article est apparu ?</b>
@@ -335,13 +338,26 @@ function drawAdmin(msg = "") {
       Envoyer la notif Discord${hook ? "" : " (ajoute ton webhook dans Réglages)"}</label>
     <div class="act"><button id="addBtn">➕ Ajouter l'apparition</button><button class="gray" id="closeBtn">Fermer</button></div>
     <div class="msg" id="adminMsg" role="status">${msg}</div>
-    ${mine.length ? `<div><b>Derniers ajouts à la main</b><ul class="manual-list" style="margin-top:6px">${mine.map(r =>
-      `<li><span>${fmtDate(new Date(r[0]))} · ${EMOJI[r[2]]} ${esc(r[3])}</span><button data-del="${esc(key(r))}">Supprimer</button></li>`).join("")}</ul></div>` : ""}
+    ${recent.length ? `<div><b>Supprimer des apparitions</b>
+      <p class="hint" style="margin:2px 0 6px">Coche les fausses apparitions (bot 🤖 ou à la main ✋), puis supprime-les.</p>
+      <ul class="manual-list del-list">${recent.map(x => {
+        const k = key([localISO(x.t), x.e, x.shop, x.name]);
+        return `<li><label class="check"><input type="checkbox" data-k="${esc(k)}">
+          <span>${fmtDate(x.t)} · ${EMOJI[x.shop]} ${esc(x.name)} ${x.e === "manuel" ? "✋" : "🤖"}</span></label></li>`;
+      }).join("")}</ul>
+      <div class="act" style="margin-top:8px"><button class="red" id="delBtn" disabled>🗑 Supprimer la sélection</button></div></div>` : ""}
     <details><summary>Réglages</summary>
       <label style="margin-top:8px">Webhook Discord<input type="password" id="hookIn" autocomplete="off" placeholder="https://discord.com/api/webhooks/…"></label>
       <div class="act" style="margin-top:8px"><button id="saveHook">Enregistrer le webhook</button><button class="red" id="logout">Se déconnecter</button></div>
     </details>`;
 }
+
+adminBody.addEventListener("change", e => {
+  if (!e.target.closest(".del-list")) return;
+  const n = adminBody.querySelectorAll(".del-list input:checked").length, btn = document.getElementById("delBtn");
+  btn.disabled = !n;
+  btn.textContent = n ? `🗑 Supprimer ${n} apparition${n > 1 ? "s" : ""}` : "🗑 Supprimer la sélection";
+});
 
 const validHook = u => /^https:\/\/(discord|discordapp)\.com\/api\/webhooks\/\d+\/[\w-]+$/.test(u);
 
@@ -393,16 +409,15 @@ adminBody.onclick = async e => {
     return drawAdmin(`<span class="ok">✅ ${EMOJI[it.shop]} ${esc(it.name)} ajouté</span>${discordMsg}`);
   }
 
-  if (b.dataset.del) {
-    const k = b.dataset.del, [ts, , shop, name] = k.split("|");
-    if (!confirm(`Supprimer ${name} du ${fmtDate(new Date(ts))} ?`)) return;
-    b.disabled = true;
-    try { await editManual(rows => { const i = rows.findIndex(r => key(r) === k); if (i >= 0) rows.splice(i, 1); }); }
+  if (b.id === "delBtn") {
+    // les données du bot sont republiées depuis son PC : on n'y touche pas, on note les suppressions à part (supprimes.js)
+    const keys = [...adminBody.querySelectorAll(".del-list input:checked")].map(i => i.dataset.k);
+    if (!keys.length || !confirm(`Supprimer ${keys.length} apparition${keys.length > 1 ? "s" : ""} ? Elles ne compteront plus dans les stats.`)) return;
+    b.disabled = true; setMsg("Suppression…");
+    try { await editDataFile("supprimes.js", "DELETED", d => keys.forEach(k => d.includes(k) || d.push(k)), "Page admin : suppressions"); }
     catch (err) { b.disabled = false; return setMsg(`<span class="err">❌ Pas supprimé : ${esc(err.message)}</span>`); }
-    fetch(STATUS_URL, { method: "POST", body: `suppr;${shop};${name};${ts}` }).catch(() => {});
-    REMOVED.add(k);
     load(); render();
-    return drawAdmin('<span class="ok">✅ Supprimé</span>');
+    return drawAdmin(`<span class="ok">✅ ${keys.length} apparition${keys.length > 1 ? "s" : ""} supprimée${keys.length > 1 ? "s" : ""} (visible par tous dans 1 à 2 min)</span>`);
   }
 
   if (b.id === "saveHook") {

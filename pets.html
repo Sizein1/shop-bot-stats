@@ -57,8 +57,7 @@
     <details class="box combos" id="combos">
       <summary>🏆 Meilleurs combos</summary>
       <div class="combo-head">
-        <label class="check">Pets équipés : <select id="teamSize" aria-label="Nombre de pets équipés"></select></label>
-        <span class="hint" style="margin:0">Chaque pet une seule fois. Les + s'additionnent ; les × s'additionnent aussi entre eux (×4 et ×3 = ×6).</span>
+        <span class="hint" style="margin:0">Combos de 2 pets (le maximum équipable), chaque pet une seule fois. Les + s'additionnent ; les × s'additionnent aussi entre eux (×4 et ×3 = ×6).</span>
       </div>
       <div class="goals" id="goals"></div>
     </details>
@@ -130,7 +129,17 @@ const GOALS = [
   { title: "🌳 Les plus grosses plantes", hint: "Chance d'avoir une plante plus grosse à la plantation.", skills: ["Big Plant Luck"] },
   { title: "🥚 Acheter le plus d'œufs", hint: "Plus d'œufs par restock, puis plus de restocks gratuits.", skills: ["Egg Stock", "Free restock"] },
   { title: "🐣 Meilleure chance à l'ouverture d'un œuf", hint: "Chance d'avoir une rareté plus haute en ouvrant un œuf.", skills: ["Lucky Hatch"] },
+  { title: "💰 Gagner le plus d'argent en jeu", hint: "Le plus gros bonus d'argent par seconde.", skills: ["Money"] },
+  { title: "🌙 Gagner le plus d'argent hors ligne", hint: "Pour les pets à laisser quand tu te déconnectes, puis l'argent en général.",
+    skills: ["Boost Money Offline", "Money"] },
+  { title: "⚡ Faire pousser le plus vite", hint: "Vitesse de pousse, puis arrosage.", skills: ["Grow Speed", "Watering"] },
+  { title: "🛍️ Restocks des deux boutiques", hint: "Le plus de restocks gratuits, puis le plus de graines et d'œufs par restock.",
+    skills: ["Free restock", "Seed Stock", "Egg Stock"] },
+  { title: "🤑 Les meilleurs deals avec les visiteurs", hint: "Valeur des deals avec les PNJ, puis visiteurs riches, puis nombre de visiteurs.",
+    skills: ["Deal Value", "Rich Visitor", "Visitors"] },
+  { title: "🤝 Jouer avec des amis", hint: "Le plus gros bonus d'amis, puis l'argent.", skills: ["Friend Boost", "Money"] },
 ];
+const TEAM_SIZE = 2;  // pets équipables en même temps dans le jeu
 const num = v => parseFloat(String(v).replace(",", ".")) || 0;  // « 10% » → 10, « 2h » → 2
 // apport d'un pet pour une compétence : [somme des ×(x−1), somme des +/−] — les × comptent avant les +
 function contrib(p, skill) {
@@ -159,12 +168,7 @@ function bestTeam(goal, size) {
 console.assert(fmtTotal([(4 - 1) + (3 - 1), 0], "") === "×6" && fmtTotal([0, 5], "%") === "+5%", "×4 et ×3 doivent donner ×6");
 
 function renderCombos() {
-  const sel = document.getElementById("teamSize");
-  if (!sel.options.length) {
-    sel.innerHTML = Array.from({ length: 8 }, (_, i) => `<option>${i + 1}</option>`).join("");
-    sel.value = store.get("team_size") || "3";
-  }
-  const size = Number(sel.value), pets = window.PETS || [];
+  const size = TEAM_SIZE, pets = window.PETS || [];
   const petLine = (p, goal) => `<li><img src="pets/${String(p.id).padStart(3, "0")}.webp" alt="" loading="lazy">
     <span class="nm">${esc(nameOf(p))} <small style="color:var(--muted)">${p.rarity}</small></span>
     <span class="what">${goal.skills.map(s => { const c = contrib(p, s); return c[0] || c[1] ? `${SKILLS[s]} ${fmtTotal(c, unit(pets, s))}` : ""; }).filter(Boolean).join(" ")}</span></li>`;
@@ -179,7 +183,6 @@ function renderCombos() {
       : `<p class="hint" style="margin:0">Pas encore de données : ajoute les compétences ${goal.skills.join(" / ")} aux pets en mode admin.</p>`}</div>`;
   }).join("");
 }
-document.getElementById("teamSize").addEventListener("change", e => { store.set("team_size", e.target.value); renderCombos(); });
 
 function render() {
   const pets = window.PETS || [];

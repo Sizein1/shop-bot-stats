@@ -23,6 +23,26 @@
   .skill-row input { padding: 4px 6px; }
   .skill-row.changed select, .skill-row.changed input { border-color: var(--money); }
   .skill-row.bad input { border-color: #ff4b45; }
+
+  /* encadré « meilleurs combos » */
+  .combos { margin-bottom: 18px; }
+  .combos > summary { list-style: none; cursor: pointer; font-size: 22px; font-weight: 700; color: #fff; text-shadow: var(--stroke);
+                      display: flex; align-items: center; gap: 10px; }
+  .combos > summary::-webkit-details-marker { display: none; }
+  .combos > summary::after { content: "▼"; font-size: 14px; margin-left: auto; transition: transform .2s; }
+  .combos[open] > summary::after { transform: rotate(180deg); }
+  .combo-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 10px 0 12px; }
+  .combo-head select { font: 600 14px "Fredoka", "Segoe UI", sans-serif; color: #fff; background: var(--row); border: 3px solid #000; border-radius: 10px; padding: 4px 8px; }
+  .goals { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  .goal h3 { margin: 0 0 2px; font-size: 17px; text-shadow: var(--stroke-sm); }
+  .goal .hint { margin: 0 0 8px; font-size: 13px; }
+  .team { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
+  .team li { display: flex; align-items: center; gap: 8px; background: var(--row); border: 2px solid #000; border-radius: 10px; padding: 3px 8px 3px 3px; font-size: 13px; font-weight: 600; }
+  .team li img { width: 40px; height: 40px; border-radius: 7px; border: 2px solid #000; flex: none; }
+  .team li .what { margin-left: auto; color: var(--money); text-shadow: var(--stroke-sm); font-weight: 700; white-space: nowrap; }
+  .team li .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .total { font-size: 14px; font-weight: 700; }
+  .total span { color: var(--money); text-shadow: var(--stroke-sm); }
 </style>
 </head>
 <body>
@@ -34,6 +54,14 @@
   </header>
 
   <div class="frame"><div class="inner">
+    <details class="box combos" id="combos">
+      <summary>🏆 Meilleurs combos</summary>
+      <div class="combo-head">
+        <label class="check">Pets équipés : <select id="teamSize" aria-label="Nombre de pets équipés"></select></label>
+        <span class="hint" style="margin:0">Chaque pet une seule fois. Les + s'additionnent ; les × s'additionnent aussi entre eux (×4 et ×3 = ×6).</span>
+      </div>
+      <div class="goals" id="goals"></div>
+    </details>
     <div class="filters">
       <div class="seg rar" id="rarSeg" role="group" aria-label="Rareté"></div>
     </div>
@@ -93,6 +121,66 @@ function skillRows(p) {
   }).join("");
 }
 
+// ---------- Meilleurs combos ----------
+// Pour chaque objectif : les compétences utiles, de la plus importante à la moins importante.
+const GOALS = [
+  { title: "🛒 Acheter le plus de seed packs", hint: "Plus de packs par restock, puis plus de restocks gratuits, puis 2 graines par pack.",
+    skills: ["Seed Stock", "Free restock", "Double Seed Pack"] },
+  { title: "🎁 Meilleure chance en ouvrant les packs", hint: "Chance d'avoir une rareté plus haute dans un pack.", skills: ["Pack Luck"] },
+  { title: "🌳 Les plus grosses plantes", hint: "Chance d'avoir une plante plus grosse à la plantation.", skills: ["Big Plant Luck"] },
+  { title: "🥚 Acheter le plus d'œufs", hint: "Plus d'œufs par restock, puis plus de restocks gratuits.", skills: ["Egg Stock", "Free restock"] },
+  { title: "🐣 Meilleure chance à l'ouverture d'un œuf", hint: "Chance d'avoir une rareté plus haute en ouvrant un œuf.", skills: ["Lucky Hatch"] },
+];
+const num = v => parseFloat(String(v).replace(",", ".")) || 0;  // « 10% » → 10, « 2h » → 2
+// apport d'un pet pour une compétence : [somme des ×(x−1), somme des +/−] — les × comptent avant les +
+function contrib(p, skill) {
+  let mult = 0, plus = 0;
+  for (const k of skillsOf(p).filter(k => k.s === skill))
+    if (k.op === "x") mult += num(k.v) - 1; else plus += (k.op === "-" ? -1 : 1) * num(k.v);
+  return [mult, plus];
+}
+const unit = (pets, skill) => { const u = pets.flatMap(skillsOf).find(k => k.s === skill && k.op !== "x"); return u ? String(u.v).replace(/^[\d.,\s]+/, "") : ""; };
+const fmtNum = n => +n.toFixed(2);
+function fmtTotal([mult, plus], u) {
+  const parts = [];
+  if (mult) parts.push("×" + fmtNum(1 + mult));
+  if (plus) parts.push((plus > 0 ? "+" : "−") + fmtNum(Math.abs(plus)) + u);
+  return parts.join(" et ") || "—";
+}
+// Les apports s'additionnent : trier les pets par apport (compétence la plus importante d'abord) et prendre les N premiers
+// donne le meilleur combo possible.
+function bestTeam(goal, size) {
+  const key = p => goal.skills.flatMap(s => contrib(p, s));
+  const useful = (window.PETS || []).filter(p => key(p).some(v => v > 0));
+  const cmp = (a, b) => { const ka = key(a), kb = key(b); for (let i = 0; i < ka.length; i++) if (kb[i] !== ka[i]) return kb[i] - ka[i]; return a.id - b.id; };
+  const sorted = useful.sort(cmp);
+  return { team: sorted.slice(0, size), spare: sorted.slice(size, size + 3) };
+}
+console.assert(fmtTotal([(4 - 1) + (3 - 1), 0], "") === "×6" && fmtTotal([0, 5], "%") === "+5%", "×4 et ×3 doivent donner ×6");
+
+function renderCombos() {
+  const sel = document.getElementById("teamSize");
+  if (!sel.options.length) {
+    sel.innerHTML = Array.from({ length: 8 }, (_, i) => `<option>${i + 1}</option>`).join("");
+    sel.value = store.get("team_size") || "3";
+  }
+  const size = Number(sel.value), pets = window.PETS || [];
+  const petLine = (p, goal) => `<li><img src="pets/${String(p.id).padStart(3, "0")}.webp" alt="" loading="lazy">
+    <span class="nm">${esc(nameOf(p))} <small style="color:var(--muted)">${p.rarity}</small></span>
+    <span class="what">${goal.skills.map(s => { const c = contrib(p, s); return c[0] || c[1] ? `${SKILLS[s]} ${fmtTotal(c, unit(pets, s))}` : ""; }).filter(Boolean).join(" ")}</span></li>`;
+  document.getElementById("goals").innerHTML = GOALS.map(goal => {
+    const { team, spare } = bestTeam(goal, size);
+    const totals = goal.skills.map(s => [s, team.map(p => contrib(p, s)).reduce((a, c) => [a[0] + c[0], a[1] + c[1]], [0, 0])]).filter(([, t]) => t[0] || t[1]);
+    return `<div class="box goal"><h3>${goal.title}</h3><p class="hint">${goal.hint}</p>
+      ${team.length ? `<ul class="team">${team.map(p => petLine(p, goal)).join("")}</ul>
+        <div class="total">Total : ${totals.map(([s, t]) => `${SKILLS[s]} ${s} <span>${fmtTotal(t, unit(pets, s))}</span>`).join(" · ")}</div>
+        ${team.length < size ? `<p class="hint" style="margin:6px 0 0">Seulement ${team.length} pet${team.length > 1 ? "s ont" : " a"} cette compétence pour l'instant.</p>` : ""}
+        ${spare.length ? `<p class="hint" style="margin:6px 0 0">Ensuite : ${spare.map(p => esc(nameOf(p))).join(", ")}</p>` : ""}`
+      : `<p class="hint" style="margin:0">Pas encore de données : ajoute les compétences ${goal.skills.join(" / ")} aux pets en mode admin.</p>`}</div>`;
+  }).join("");
+}
+document.getElementById("teamSize").addEventListener("change", e => { store.set("team_size", e.target.value); renderCombos(); });
+
 function render() {
   const pets = window.PETS || [];
   const known = pets.filter(p => nameOf(p) !== "???").length, filled = pets.filter(p => skillsOf(p).length).length;
@@ -127,6 +215,7 @@ function render() {
     </div>`;
   }).join("") || `<p class="hint">Aucun pet ne correspond.</p>`;
 
+  renderCombos();
   document.getElementById("savebar").hidden = !state.edit;
   updateSaveMsg();
 }

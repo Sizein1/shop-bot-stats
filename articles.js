@@ -1,0 +1,1 @@
+window.ARTICLE_IMAGES = {};

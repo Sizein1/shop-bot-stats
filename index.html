@@ -90,6 +90,7 @@ const ACTIVE_MAX = 25 * 60e3;
 // statut en direct via ntfy.sh (GitHub Pages met 1-2 min à publier) ; même canal que STATUS_URL dans shop_bot.py
 const STATUS_URL = "https://ntfy.sh/shopbot-sizein1-42dad0def695";
 const EMOJI = { eggs: "🥚", seed: "🌱" };
+const SITE_URL = "https://sizein1.github.io/shop-bot-stats/";  // adresse publique : Discord y va chercher les images
 const state = { shop: "all", days: 0 };
 let NOW, GEN, SEEN, ACTIVE, ITEMS, EVENTS, SESSIONS;
 let LIVE = null;      // dernier statut reçu en direct : { actif, time }
@@ -262,7 +263,7 @@ document.addEventListener("mousemove", e => {
 // charge les données à l'ouverture puis chaque minute ; ?t= force la version fraîche
 // (GitHub autorise le navigateur à garder une copie 10 min : sans ça, la page montrerait d'anciennes données)
 function refreshData() {
-  return Promise.all(["historique.js", "manuel.js", "supprimes.js"].map(file => new Promise(done => {
+  return Promise.all(["historique.js", "manuel.js", "supprimes.js", "articles.js"].map(file => new Promise(done => {
     const s = document.createElement("script");
     s.src = file + "?t=" + Date.now();
     s.onload = s.onerror = () => { s.remove(); done(); };
@@ -332,7 +333,8 @@ function drawAdmin(msg = "") {
     <h2 id="adminTitle">🔓 Admin</h2>
     <div><b>1. Quel article est apparu ?</b>
       <div class="pick" style="margin-top:6px">${(window.ITEMS || []).map((it, i) =>
-        `<button data-i="${i}" aria-pressed="${pick === i}">${EMOJI[it.shop]} ${esc(it.name)}</button>`).join("")}</div></div>
+        `<button data-i="${i}" aria-pressed="${pick === i}">${EMOJI[it.shop]} ${esc(it.name)}${(window.ARTICLE_IMAGES || {})[it.name] ? " 📷" : ""}</button>`).join("")}</div>
+      <p class="hint" style="margin:4px 0 0">📷 = la notif Discord joindra la dernière capture de cet article prise par le bot.</p></div>
     <label>2. Quand ?<input type="datetime-local" id="when" step="1" value="${localISO(new Date())}"></label>
     <label class="check"><input type="checkbox" id="discordOn" ${hook ? "checked" : "disabled"}>
       Envoyer la notif Discord${hook ? "" : " (ajoute ton webhook dans Réglages)"}</label>
@@ -400,8 +402,11 @@ adminBody.onclick = async e => {
     let discordMsg = "";
     if (sendDiscord) {
       try {
+        // même image que les notifs automatiques : la dernière capture de cet article prise par le bot (publiée sur le site)
+        const img = (window.ARTICLE_IMAGES || {})[it.name];
         const r = await fetch(store.get("discord_url"), { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: `@everyone ${EMOJI[it.shop]} ${it.name} en stock !`, allowed_mentions: { parse: ["everyone"] } }) });
+          body: JSON.stringify({ content: `@everyone ${EMOJI[it.shop]} ${it.name} en stock !`, allowed_mentions: { parse: ["everyone"] },
+            ...(img ? { embeds: [{ image: { url: SITE_URL + img } }] } : {}) }) });
         discordMsg = r.ok ? " + notif Discord envoyée" : ` <span class="err">mais Discord a refusé la notif (${r.status})</span>`;
       } catch { discordMsg = ' <span class="err">mais la notif Discord n\'est pas partie</span>'; }
     }

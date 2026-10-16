@@ -81,8 +81,8 @@
 <script src="commun.js?v=2"></script>
 <script src="pets.js"></script>
 <script>
-// adresse du serveur des trades (Netlify) — à remplir une fois le serveur créé ; ?api=… permet de tester un autre serveur
-const TRADE_API = new URLSearchParams(location.search).get("api") || "";
+// adresse du serveur des trades (Netlify, dépôt shop-bot-trade) ; ?api=… permet de tester un autre serveur
+const TRADE_API = new URLSearchParams(location.search).get("api") || "https://voluble-lebkuchen-e88cf9.netlify.app/api/trades";
 const GAMEPASSES = ["VIP", "x2 Grow Speed", "x2 Money", "Watering Can", "Witch"];
 const MAX_ITEMS = 4;
 const state = { type: "all", item: "", mine: false };

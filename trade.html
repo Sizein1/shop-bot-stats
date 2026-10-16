@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shop Bot · Trade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=2">
+<style>
+  .tools select, .form select, .form input, .form textarea {
+    font: 600 14px "Fredoka", "Segoe UI", sans-serif; color: #fff; background: var(--row); border: 3px solid #000; border-radius: 10px; padding: 6px 10px; }
+  .post-btn button { background: linear-gradient(#69e66b, #36bd38) !important; box-shadow: inset 0 -4px 0 var(--green-dk) !important; }
+  .trades { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; }
+  .trade { display: grid; gap: 8px; }
+  .trade .head { display: flex; align-items: center; gap: 8px; }
+  .badge { font-size: 13px; font-weight: 700; padding: 2px 10px; border: 2px solid #000; border-radius: 8px; text-shadow: var(--stroke-sm); }
+  .badge.trade { background: linear-gradient(#69e66b, #36bd38); } .badge.search { background: linear-gradient(#5aa9ff, #2f7fe0); }
+  .trade .when { margin-left: auto; color: var(--muted); font-size: 13px; }
+  .sides { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+  .side h4 { margin: 0 0 4px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 58px; align-items: flex-start; }
+  .chip { width: 58px; text-align: center; font-size: 10px; font-weight: 600; line-height: 1.15; }
+  .chip img { width: 58px; height: 58px; display: block; border-radius: 9px; border: 2px solid #000; background: var(--row); }
+  .chip.none { color: var(--muted); font-size: 13px; width: auto; padding-top: 18px; }
+  .arrow { font-size: 22px; text-shadow: var(--stroke-sm); }
+  .who { font-size: 14px; font-weight: 600; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .who span { color: var(--muted); font-weight: 500; }
+  .note { font-size: 14px; color: var(--ink-2); background: var(--row); border: 2px solid #000; border-radius: 8px; padding: 6px 10px; overflow-wrap: anywhere; }
+  .trade .del { justify-self: end; }
+  .trade .del button { font: 700 12px "Fredoka", sans-serif; color: #fff; cursor: pointer; padding: 3px 10px; border: 2px solid #000; border-radius: 8px; background: linear-gradient(#f2625d, #d0302b); }
+  /* formulaire */
+  .form { display: grid; gap: 12px; }
+  .form .row { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
+  .slots { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+  .slots .chip { cursor: pointer; position: relative; }
+  .slots .chip::after { content: "✕"; position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; background: #d0302b;
+                        border: 2px solid #000; font-size: 11px; line-height: 14px; color: #fff; }
+  .slots .add { width: 58px; height: 58px; border: 2px dashed var(--muted); border-radius: 9px; background: none; color: var(--muted); font-size: 26px; cursor: pointer; }
+  .slots .add[aria-pressed="true"] { border-color: var(--money); color: var(--money); }
+  .picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 6px; max-height: 260px; overflow-y: auto;
+            background: var(--panel-2); border: 3px solid #000; border-radius: 12px; padding: 8px; }
+  .picker button { background: none; border: 0; padding: 0; color: #fff; cursor: pointer; font: 600 10px "Fredoka", sans-serif; text-align: center; }
+  .picker button img { width: 100%; aspect-ratio: 1; border-radius: 9px; border: 2px solid #000; display: block; margin-bottom: 2px; }
+  .picker button:hover img { border-color: var(--money); }
+  .picker .grp { grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: var(--muted); margin-top: 4px; }
+  dialog#postDlg { width: min(640px, calc(100vw - 32px)); }
+  #postBody { background: var(--panel); border: 3px solid #000; border-radius: 16px; padding: 18px; }
+</style>
+</head>
+<body>
+<main>
+  <nav class="tabs"><a href="./">📊 Stats</a><a href="plantes.html">🌱 Index</a><a href="pets.html">🐾 Pets</a><a href="trade.html" aria-current="page">🤝 Trade</a></nav>
+  <header class="banner">
+    <h1 class="stroke">🤝 Trade</h1>
+    <p class="sub" id="sub">Annonces d'échange de pets et de gamepass</p>
+  </header>
+
+  <div class="frame"><div class="inner">
+    <div class="filters">
+      <div class="seg" id="typeSeg" role="group" aria-label="Type d'annonce">
+        <button data-v="all" aria-pressed="true">Toutes</button>
+        <button data-v="trade" aria-pressed="false">🔄 Échanges</button>
+        <button data-v="search" aria-pressed="false">🔍 Recherches</button>
+      </div>
+      <div class="seg post-btn"><button id="newBtn" aria-haspopup="dialog">➕ Publier une annonce</button></div>
+      <div class="seg admin-open"><button id="adminBtn" aria-haspopup="dialog">🔒 Admin</button></div>
+    </div>
+    <div class="tools">
+      <select id="itemFilter" aria-label="Filtrer par pet ou gamepass"></select>
+      <label class="check"><input type="checkbox" id="mineOnly"> Seulement mes annonces</label>
+    </div>
+    <p class="count" id="count"></p>
+    <div class="trades" id="list"></div>
+  </div></div>
+</main>
+
+<dialog id="postDlg" aria-labelledby="postTitle"><div id="postBody"></div></dialog>
+<dialog id="admin" aria-labelledby="adminTitle"><div id="adminBody"></div></dialog>
+
+<script src="commun.js?v=2"></script>
+<script src="pets.js"></script>
+<script>
+// adresse du serveur des trades (Netlify) — à remplir une fois le serveur créé ; ?api=… permet de tester un autre serveur
+const TRADE_API = new URLSearchParams(location.search).get("api") || "";
+const GAMEPASSES = ["VIP", "x2 Grow Speed", "x2 Money", "Watering Can", "Witch"];
+const MAX_ITEMS = 4;
+const state = { type: "all", item: "", mine: false };
+let trades = [], loaded = false, loadError = "";
+const mineKeys = () => { try { return JSON.parse(store.get("trade_keys") || "{}"); } catch { return {}; } };  // { id: clé de suppression }
+
+// catalogue : gamepass + pets découverts (avec leur image)
+function catalog() {
+  const extra = window.PET_DATA || {};
+  const pets = (window.PETS || []).map(p => ({ name: (extra[p.id] && extra[p.id].name) || p.name, img: `pets/${String(p.id).padStart(3, "0")}.webp`, rarity: p.rarity }))
+    .filter(p => p.name !== "???");
+  const gp = GAMEPASSES.map(n => ({ name: n, img: `gamepass/${n.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.webp`, rarity: "Gamepass" }));
+  return [...gp, ...pets];
+}
+const imgOf = name => (catalog().find(c => c.name === name) || {}).img || "";
+const chip = name => `<div class="chip" title="${esc(name)}"><img src="${imgOf(name)}" alt="" loading="lazy">${esc(name)}</div>`;
+const ago = t => { const m = Math.round((Date.now() - t) / 60e3);
+  return m < 1 ? "à l'instant" : m < 60 ? `il y a ${m} min` : m < 1440 ? `il y a ${Math.round(m / 60)} h` : `il y a ${Math.round(m / 1440)} j`; };
+
+function render() {
+  const sel = document.getElementById("itemFilter");
+  if (sel.options.length <= 1) sel.innerHTML = `<option value="">Tous les pets et gamepass</option>` +
+    catalog().map(c => `<option${c.name === state.item ? " selected" : ""}>${esc(c.name)}</option>`).join("");
+  const keys = mineKeys(), admin = !!store.get("trade_admin_key");
+  const list = trades.filter(t => (state.type === "all" || t.type === state.type)
+    && (!state.item || t.offer.includes(state.item) || t.want.includes(state.item)) && (!state.mine || keys[t.id]));
+  document.getElementById("count").textContent = !TRADE_API ? "" : loaded ? `${list.length} annonce${list.length > 1 ? "s" : ""}` : "Chargement…";
+  document.getElementById("list").innerHTML = !TRADE_API
+    ? `<div class="box empty">Le serveur des trades n'est pas encore branché.</div>`
+    : loadError ? `<div class="box empty">❌ ${esc(loadError)}</div>`
+    : list.map(t => `<article class="box trade">
+      <div class="head"><span class="badge ${t.type}">${t.type === "trade" ? "🔄 J'échange" : "🔍 Je recherche"}</span><span class="when">${ago(t.at)}</span></div>
+      <div class="sides">
+        <div class="side"><h4>${t.type === "trade" ? "Je propose" : "J'offre"}</h4><div class="chips">${t.offer.map(chip).join("") || '<span class="chip none">à discuter</span>'}</div></div>
+        <div class="arrow">➡️</div>
+        <div class="side"><h4>Je veux</h4><div class="chips">${t.want.map(chip).join("") || '<span class="chip none">à discuter</span>'}</div></div>
+      </div>
+      <div class="who">🎮 ${esc(t.roblox)}${t.discord ? ` <span>·</span> 💬 ${esc(t.discord)}` : ""}</div>
+      ${t.note ? `<div class="note">${esc(t.note)}</div>` : ""}
+      ${keys[t.id] || admin ? `<div class="del"><button data-del="${esc(t.id)}">🗑 Supprimer${keys[t.id] ? "" : " (admin)"}</button></div>` : ""}
+    </article>`).join("") || `<div class="box empty">Aucune annonce pour l'instant.</div>`;
+}
+
+async function load() {
+  if (!TRADE_API) return render();
+  try {
+    const r = await fetch(TRADE_API, { cache: "no-store" });
+    if (!r.ok) throw new Error(`le serveur des trades a répondu ${r.status}`);
+    trades = await r.json(); loaded = true; loadError = "";
+  } catch (e) { loadError = "Impossible de charger les annonces : " + e.message; }
+  render();
+}
+
+for (const [id, key] of [["typeSeg", "type"]]) {
+  document.getElementById(id).addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    state[key] = b.dataset.v;
+    document.querySelectorAll(`#${id} button`).forEach(x => x.setAttribute("aria-pressed", x === b));
+    render();
+  });
+}
+document.getElementById("itemFilter").addEventListener("change", e => { state.item = e.target.value; render(); });
+document.getElementById("mineOnly").addEventListener("change", e => { state.mine = e.target.checked; render(); });
+
+// --- suppression (l'auteur avec sa clé, ou l'admin) ---
+document.getElementById("list").addEventListener("click", async e => {
+  const b = e.target.closest("button[data-del]"); if (!b) return;
+  if (!confirm("Supprimer cette annonce ?")) return;
+  const id = b.dataset.del, keys = mineKeys();
+  const headers = keys[id] ? { "X-Delete-Key": keys[id] } : { "X-Admin-Key": store.get("trade_admin_key") || "" };
+  b.disabled = true;
+  try {
+    const r = await fetch(TRADE_API + "?id=" + encodeURIComponent(id), { method: "DELETE", headers });
+    if (!r.ok) throw new Error((await r.json()).error || r.status);
+    delete keys[id]; store.set("trade_keys", JSON.stringify(keys));
+    trades = trades.filter(t => t.id !== id); render();
+  } catch (err) { b.disabled = false; alert("Pas supprimée : " + err.message); }
+});
+
+// --- publier une annonce ---
+const postDlg = document.getElementById("postDlg"), postBody = document.getElementById("postBody");
+postDlg.addEventListener("click", e => { if (e.target === postDlg) postDlg.close(); });
+let draft;
+document.getElementById("newBtn").onclick = () => {
+  if (!TRADE_API) return alert("Le serveur des trades n'est pas encore branché.");
+  draft = { type: "trade", offer: [], want: [], side: "offer" };
+  drawForm(); postDlg.showModal();
+};
+function drawForm(msg = "") {
+  const side = (key, label) => `<div class="row">${label}
+      <div class="slots">${draft[key].map((n, i) => `<div class="chip" data-rm="${key}:${i}" title="Retirer"><img src="${imgOf(n)}" alt="">${esc(n)}</div>`).join("")}
+      ${draft[key].length < MAX_ITEMS ? `<button class="add" data-side="${key}" aria-pressed="${draft.side === key}" title="Ajouter">+</button>` : ""}</div></div>`;
+  const groups = {};
+  catalog().forEach(c => (groups[c.rarity] = groups[c.rarity] || []).push(c));
+  postBody.innerHTML = `<div class="form">
+    <h2 id="postTitle" style="margin:0">➕ Nouvelle annonce</h2>
+    <div class="seg" id="ptype">${[["trade", "🔄 J'échange"], ["search", "🔍 Je recherche"]].map(([v, l]) =>
+      `<button data-type="${v}" aria-pressed="${draft.type === v}">${l}</button>`).join("")}</div>
+    ${side("offer", draft.type === "trade" ? "Je propose (4 max)" : "J'offre en échange (facultatif, 4 max)")}
+    ${side("want", "Je veux (4 max)")}
+    <div class="row">Clique sur un pet ou un gamepass pour l'ajouter à « ${draft.side === "offer" ? (draft.type === "trade" ? "Je propose" : "J'offre") : "Je veux"} » :
+      <div class="picker">${Object.entries(groups).map(([g, items]) => `<div class="grp">${g}</div>` +
+        items.map(c => `<button data-pick="${esc(c.name)}"><img src="${c.img}" alt="" loading="lazy">${esc(c.name)}</button>`).join("")).join("")}</div></div>
+    <label class="row">Pseudo Roblox *<input id="fRoblox" maxlength="20" value="${esc(store.get("trade_roblox") || "")}" placeholder="TonPseudo"></label>
+    <label class="row">Pseudo Discord (facultatif)<input id="fDiscord" maxlength="32" value="${esc(store.get("trade_discord") || "")}"></label>
+    <label class="row">Message (facultatif)<textarea id="fNote" maxlength="200" rows="2"></textarea></label>
+    <div class="act"><button id="sendBtn">📢 Publier</button><button class="gray" id="cancelBtn">Annuler</button></div>
+    <div class="msg" id="postMsg" role="status">${msg}</div></div>`;
+}
+postBody.addEventListener("click", async e => {
+  const b = e.target.closest("button, [data-rm]"); if (!b) return;
+  const keep = () => ({ roblox: document.getElementById("fRoblox").value, discord: document.getElementById("fDiscord").value, note: document.getElementById("fNote").value });
+  const redraw = () => { const k = keep(); drawForm(); document.getElementById("fRoblox").value = k.roblox; document.getElementById("fDiscord").value = k.discord; document.getElementById("fNote").value = k.note; };
+  if (b.dataset.type) { draft.type = b.dataset.type; return redraw(); }
+  if (b.dataset.side) { draft.side = b.dataset.side; return redraw(); }
+  if (b.dataset.rm) { const [k, i] = b.dataset.rm.split(":"); draft[k].splice(i, 1); return redraw(); }
+  if (b.dataset.pick) {
+    const target = draft[draft.side].length < MAX_ITEMS ? draft.side : draft.side === "offer" ? "want" : "offer";
+    if (draft[target].length >= MAX_ITEMS) { document.getElementById("postMsg").innerHTML = '<span class="err">4 pets maximum de chaque côté.</span>'; return; }
+    draft[target].push(b.dataset.pick); draft.side = target; return redraw();
+  }
+  if (b.id === "cancelBtn") return postDlg.close();
+  if (b.id !== "sendBtn") return;
+  const k = keep(), msg = document.getElementById("postMsg");
+  if (!draft.offer.length && !draft.want.length) return msg.innerHTML = '<span class="err">Ajoute au moins un pet ou gamepass.</span>';
+  if (!/^[A-Za-z0-9_]{3,20}$/.test(k.roblox.trim())) return msg.innerHTML = '<span class="err">Pseudo Roblox invalide (3 à 20 lettres, chiffres ou _).</span>';
+  b.disabled = true; msg.textContent = "Publication…";
+  try {
+    const r = await fetch(TRADE_API, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: draft.type, offer: draft.offer, want: draft.want, roblox: k.roblox.trim(), discord: k.discord.trim(), note: k.note.trim() }) });
+    const out = await r.json();
+    if (!r.ok) throw new Error(out.error || r.status);
+    const keys = mineKeys(); keys[out.id] = out.deleteKey; store.set("trade_keys", JSON.stringify(keys));  // pour pouvoir la supprimer plus tard
+    store.set("trade_roblox", k.roblox.trim()); store.set("trade_discord", k.discord.trim());
+    postDlg.close(); load();
+  } catch (err) { b.disabled = false; msg.innerHTML = `<span class="err">❌ ${esc(err.message)}</span>`; }
+});
+
+// --- admin : mot de passe des trades (variable ADMIN_KEY sur Netlify), gardé dans ce navigateur ---
+const dlg = document.getElementById("admin"), adminBody = document.getElementById("adminBody");
+dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+function drawAdmin() {
+  const on = !!store.get("trade_admin_key");
+  adminBody.innerHTML = `<h2 id="adminTitle">${on ? "🔓" : "🔒"} Admin des trades</h2>
+    <p class="hint" style="margin:0">${on ? "Connecté : un bouton Supprimer apparaît sur toutes les annonces." : "Mot de passe défini sur Netlify (ADMIN_KEY). Il reste dans ce navigateur."}</p>
+    ${on ? "" : `<label>Mot de passe<input type="password" id="admKey" autocomplete="off"></label>`}
+    <div class="act">${on ? `<button class="red" id="admOut">Se déconnecter</button>` : `<button id="admIn">Se connecter</button>`}<button class="gray" id="closeBtn">Fermer</button></div>`;
+}
+document.getElementById("adminBtn").onclick = () => { drawAdmin(); dlg.showModal(); };
+adminBody.onclick = e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.id === "admIn") store.set("trade_admin_key", document.getElementById("admKey").value.trim());
+  if (b.id === "admOut") store.set("trade_admin_key", null);
+  dlg.close(); render();
+};
+
+// pets découverts à jour, puis annonces toutes les 30 s
+new Promise(done => { const s = document.createElement("script"); s.src = "pets_admin.js?t=" + Date.now(); s.onload = s.onerror = done; document.body.appendChild(s); })
+  .then(() => { document.getElementById("itemFilter").innerHTML = ""; load(); });
+setInterval(load, 30e3);
+render();
+</script>
+</body>
+</html>
